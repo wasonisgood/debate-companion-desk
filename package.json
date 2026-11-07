@@ -1,7 +1,7 @@
 {
   "name": "debate-companion-desk",
   "private": true,
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "辯士練習陪伴與研究員智能提問助手桌面端",
   "author": "wasonisgood",
   "type": "module",
