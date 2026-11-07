@@ -33,6 +33,13 @@ jobs:
       - name: Build Web Renderer
         run: npm run build
 
+      - name: Extract Version
+        id: get_version
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
       - name: Package Windows Executables (NSIS, Portable, Zip)
         run: |
           npx electron-builder --win nsis portable zip --publish never
@@ -53,6 +60,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', steps.get_version.outputs.version) }}
+          name: ${{ format('v{0} - 辯論陪伴台帳熱修復與最新正式發行版', steps.get_version.outputs.version) }}
           files: |
             release/*.exe
             release/*.zip
