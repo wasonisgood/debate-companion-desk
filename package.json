@@ -12,7 +12,7 @@
     "check": "tsc --noEmit",
     "test": "tsx --test tests/unit/*.test.ts tests/e2e/*.test.ts",
     "start": "electron .",
-    "dist:win": "npm run build && electron-builder --win nsis portable zip",
+    "dist:win": "npm run build && electron-builder --win dir portable zip",
     "installer": "powershell -ExecutionPolicy Bypass -File installer/build_installer.ps1"
   },
   "build": {
@@ -29,7 +29,7 @@
     ],
     "win": {
       "target": [
-        "nsis",
+        "dir",
         "portable",
         "zip"
       ],

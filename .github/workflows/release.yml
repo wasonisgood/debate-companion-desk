@@ -40,9 +40,9 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Package Windows Executables (NSIS, Portable, Zip)
+      - name: Package Windows Executables (Win-Unpacked, Portable & Zip)
         run: |
-          npx electron-builder --win nsis portable zip --publish never
+          npx electron-builder --win dir portable zip --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -56,16 +56,34 @@ jobs:
         run: |
           node installer/generate_manifest.js
 
+      - name: Verify Custom Installer Integrity
+        shell: powershell
+        run: |
+          node -e "
+          const fs = require('fs');
+          const buf = fs.readFileSync('DebateCompanionSetup.exe');
+          if (buf.includes(Buffer.from('Nullsoft'))) {
+            throw new Error('CRITICAL: DebateCompanionSetup.exe was contaminated by NSIS!');
+          }
+          if (!buf.includes(Buffer.from('BSJB'))) {
+            throw new Error('CRITICAL: DebateCompanionSetup.exe is missing .NET CLR runtime header!');
+          }
+          if (buf.length < 50000000) {
+            throw new Error('CRITICAL: DebateCompanionSetup.exe is too small (' + buf.length + ' bytes), payload may be missing!');
+          }
+          console.log('Integrity check PASSED: Genuine C# WPF installer verified (' + buf.length + ' bytes)');
+          "
+
       - name: Create GitHub Release and Upload Artifacts
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', steps.get_version.outputs.version) }}
-          name: ${{ format('v{0} - 辯論陪伴台帳熱修復與最新正式發行版', steps.get_version.outputs.version) }}
+          name: ${{ format('v{0} - 辯論陪伴台帳正式發行版', steps.get_version.outputs.version) }}
           files: |
+            DebateCompanionSetup.exe
             release/*.exe
             release/*.zip
-            DebateCompanionSetup.exe
             installer/publish/latest.json
           generate_release_notes: true
           draft: false

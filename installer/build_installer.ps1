@@ -32,15 +32,17 @@ namespace DebateCompanion {
 [IO.File]::WriteAllText("$scriptDir\BuildInfo.g.cs", $buildInfo, (New-Object Text.UTF8Encoding($false)))
 Write-Host "Target Version: $version / Manifest: $manifestUrl"
 
-# 2. Package win-unpacked payload if requested
-if ($RebuildPayload) {
-    $unpacked = "$rootDir\release\win-unpacked"
-    if (Test-Path $unpacked) {
-        Write-Host "Creating app-payload.zip from $unpacked..."
-        Remove-Item "$scriptDir\app-payload.zip" -Force -ErrorAction SilentlyContinue
-        Add-Type -AssemblyName System.IO.Compression.FileSystem
-        [IO.Compression.ZipFile]::CreateFromDirectory($unpacked, "$scriptDir\app-payload.zip", [IO.Compression.CompressionLevel]::Optimal, $false)
-    }
+# 2. Package win-unpacked payload if requested or if missing
+$unpacked = "$rootDir\release\win-unpacked"
+if (($RebuildPayload -or !(Test-Path "$scriptDir\app-payload.zip")) -and (Test-Path $unpacked)) {
+    Write-Host "Creating app-payload.zip from $unpacked..."
+    Remove-Item "$scriptDir\app-payload.zip" -Force -ErrorAction SilentlyContinue
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [IO.Compression.ZipFile]::CreateFromDirectory($unpacked, "$scriptDir\app-payload.zip", [IO.Compression.CompressionLevel]::Optimal, $false)
+}
+
+if (!(Test-Path "$scriptDir\app-payload.zip")) {
+    throw "app-payload.zip not found! Cannot compile complete installer without payload. Run electron-builder or build win-unpacked first."
 }
 
 # 3. References for csc.exe

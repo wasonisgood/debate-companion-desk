@@ -31,3 +31,6 @@ jobs:
 
       - name: Verify Web Build
         run: npm run build
+
+      - name: Verify Manifest Generator Script
+        run: node installer/generate_manifest.js

@@ -970,8 +970,12 @@ namespace DebateCompanionInstaller {
 
             // 1. 解壓縮 app-payload.zip
             using (Stream zipStream = asm.GetManifestResourceStream("app-payload.zip")) {
-                if (zipStream != null) {
-                    string zipTmp = Path.Combine(Path.GetTempPath(), "debate-payload-" + Guid.NewGuid().ToString("N") + ".zip");
+                if (zipStream == null) {
+                    throw new InvalidOperationException(en
+                        ? "Installation payload is missing in this installer package."
+                        : "安裝套件不完整：內部缺少應用程式核心組件，請下載完整發布版本。");
+                }
+                string zipTmp = Path.Combine(Path.GetTempPath(), "debate-payload-" + Guid.NewGuid().ToString("N") + ".zip");
                     using (FileStream fs = File.Create(zipTmp)) {
                         zipStream.CopyTo(fs);
                     }
@@ -996,7 +1000,6 @@ namespace DebateCompanionInstaller {
                         }
                     }
                     try { File.Delete(zipTmp); } catch { }
-                }
             }
 
             report(82, en ? "Installing uninstaller and updater…" : "正在安裝專屬解除安裝與更新精靈…");
