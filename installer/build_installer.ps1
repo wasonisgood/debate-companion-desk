@@ -63,7 +63,7 @@ $common = @("$scriptDir\UpdateCommon.cs", "$scriptDir\BuildInfo.g.cs")
 
 function Compile($out, $sources, $extra) {
     Write-Host "Compiling $out..."
-    & "$netDir\csc.exe" /nologo /target:winexe /optimize+ /platform:anycpu /utf8output /codepage:65001 /win32icon:"$icoPath" $refArgs $extra /out:"$out" $sources
+    & "$netDir\csc.exe" /nologo /target:winexe /optimize+ /platform:anycpu /utf8output /codepage:65001 /win32icon:"$icoPath" $refArgs /resource:"$icoPath",app.ico $extra /out:"$out" $sources
     if ($LASTEXITCODE -ne 0) { throw "Compile failed for $out" }
 }
 

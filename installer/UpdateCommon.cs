@@ -1,17 +1,14 @@
 using System;
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Web.Script.Serialization;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Effects;
 
+// 模擬庭提問陪伴台帳 ・ 線上更新與安裝共用函式庫
+// 版本號與更新清單網址由 build_installer.ps1 產生的 BuildInfo.g.cs 提供
 namespace DebateCompanion {
     public class UpdateManifest {
         public string Version;
@@ -24,6 +21,12 @@ namespace DebateCompanion {
         public string NotesZh;
         public string NotesEn;
 
+        public string Notes(string lang) {
+            string n = (lang == "en") ? NotesEn : NotesZh;
+            return string.IsNullOrEmpty(n) ? (NotesZh ?? NotesEn ?? "") : n;
+        }
+
+        // 強制更新：清單標示 mandatory，或目前版本低於最低支援版本
         public bool IsForcedFor(string currentVersion) {
             if (!UpdateCommon.IsNewer(Version, currentVersion)) return false;
             if (Mandatory) return true;
@@ -32,7 +35,12 @@ namespace DebateCompanion {
     }
 
     public static class UpdateCommon {
+        public const int ExitNoAction = 0;
+        public const int ExitInstallerLaunched = 10;
+        public const int ExitForcedDeclined = 20;
+
         static UpdateCommon() {
+            // .NET Framework 4.x 預設不啟用 TLS 1.2，GitHub 等主機會拒絕連線
             try {
                 ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072 | (SecurityProtocolType)12288;
             } catch {
@@ -41,6 +49,8 @@ namespace DebateCompanion {
         }
 
         public static string CurrentBuildVersion { get { return BuildInfo.Version; } }
+
+        // 可用環境變數 DEBATE_UPDATE_URL 覆寫
         public static string ManifestUrl {
             get {
                 string env = Environment.GetEnvironmentVariable("DEBATE_UPDATE_URL");
@@ -56,6 +66,20 @@ namespace DebateCompanion {
             }
         }
 
+        public static string DownloadDir {
+            get {
+                string d = Path.Combine(Path.GetTempPath(), "DebateCompanionUpdate");
+                try { Directory.CreateDirectory(d); } catch { }
+                return d;
+            }
+        }
+
+        public static readonly string LogPath = Path.Combine(Path.GetTempPath(), "DebateCompanionUpdate.log");
+        public static void Log(string msg) {
+            try { File.AppendAllText(LogPath, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "  " + msg + Environment.NewLine); } catch { }
+        }
+
+        // ───── 版本比較 ─────
         public static Version ParseVersion(string v) {
             if (string.IsNullOrEmpty(v)) return new Version(0, 0, 0);
             v = v.Trim().TrimStart('v', 'V');
@@ -73,277 +97,189 @@ namespace DebateCompanion {
             return ParseVersion(candidate) > ParseVersion(current);
         }
 
+        // ───── 取得線上更新清單 ─────
         public static UpdateManifest FetchManifest(int timeoutMs) {
             string url = ManifestUrl;
-            if (string.IsNullOrEmpty(url)) return null;
+            if (string.IsNullOrEmpty(url)) throw new InvalidOperationException("Update manifest URL not configured");
+            if (url.StartsWith("http", StringComparison.OrdinalIgnoreCase)) {
+                url += (url.Contains("?") ? "&" : "?") + "t=" + DateTime.UtcNow.Ticks;
+            }
+            WebRequest req = WebRequest.Create(url);
+            req.Timeout = timeoutMs;
+            HttpWebRequest http = req as HttpWebRequest;
+            if (http != null) {
+                http.ReadWriteTimeout = timeoutMs;
+                http.UserAgent = "DebateCompanion-Updater/" + CurrentBuildVersion;
+                http.AllowAutoRedirect = true;
+                http.CachePolicy = new System.Net.Cache.RequestCachePolicy(System.Net.Cache.RequestCacheLevel.NoCacheNoStore);
+            }
+            string json;
+            using (WebResponse resp = req.GetResponse())
+            using (StreamReader sr = new StreamReader(resp.GetResponseStream(), Encoding.UTF8)) {
+                json = sr.ReadToEnd();
+            }
+            return ParseManifest(json);
+        }
 
-            try {
-                HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
-                req.UserAgent = "DebateCompanionDesk/" + CurrentBuildVersion;
-                req.Timeout = timeoutMs;
-                using (WebResponse resp = req.GetResponse())
-                using (Stream stream = resp.GetResponseStream())
-                using (StreamReader reader = new StreamReader(stream, Encoding.UTF8)) {
-                    string json = reader.ReadToEnd();
-                    var ser = new JavaScriptSerializer();
-                    var dict = ser.Deserialize<System.Collections.Generic.Dictionary<string, object>>(json);
-                    if (dict == null) return null;
+        public static UpdateManifest ParseManifest(string json) {
+            var ser = new JavaScriptSerializer();
+            var d = ser.DeserializeObject(json.TrimStart('\uFEFF')) as Dictionary<string, object>;
+            if (d == null) throw new FormatException("Invalid manifest");
+            var m = new UpdateManifest {
+                Version = Str(d, "version"),
+                MinimumVersion = Str(d, "minimumVersion"),
+                Mandatory = Bool(d, "mandatory"),
+                InstallerUrl = Str(d, "installerUrl"),
+                Sha256 = Str(d, "sha256"),
+                ReleaseDate = Str(d, "releaseDate")
+            };
+            long size; long.TryParse(Str(d, "size") ?? "0", out size); m.Size = size;
+            object notes;
+            if (d.TryGetValue("notes", out notes)) {
+                var nd = notes as Dictionary<string, object>;
+                if (nd != null) { m.NotesZh = Str(nd, "zh"); m.NotesEn = Str(nd, "en"); }
+                else if (notes != null) { m.NotesZh = m.NotesEn = notes.ToString(); }
+            }
+            if (string.IsNullOrEmpty(m.Version) || string.IsNullOrEmpty(m.InstallerUrl))
+                throw new FormatException("Manifest missing version or installerUrl");
+            return m;
+        }
 
-                    var m = new UpdateManifest();
-                    m.Version = dict.ContainsKey("version") ? Convert.ToString(dict["version"]) : "";
-                    m.MinimumVersion = dict.ContainsKey("minimumVersion") ? Convert.ToString(dict["minimumVersion"]) : "";
-                    m.Mandatory = dict.ContainsKey("mandatory") && Convert.ToBoolean(dict["mandatory"]);
-                    m.InstallerUrl = dict.ContainsKey("installerUrl") ? Convert.ToString(dict["installerUrl"]) : "";
-                    m.Sha256 = dict.ContainsKey("sha256") ? Convert.ToString(dict["sha256"]) : "";
-                    m.Size = dict.ContainsKey("size") ? Convert.ToInt64(dict["size"]) : 0;
-                    m.ReleaseDate = dict.ContainsKey("releaseDate") ? Convert.ToString(dict["releaseDate"]) : "";
+        static string Str(Dictionary<string, object> d, string k) {
+            object v; return d.TryGetValue(k, out v) && v != null ? Convert.ToString(v, System.Globalization.CultureInfo.InvariantCulture) : null;
+        }
+        static bool Bool(Dictionary<string, object> d, string k) {
+            object v; if (!d.TryGetValue(k, out v) || v == null) return false;
+            if (v is bool) return (bool)v;
+            bool b; return bool.TryParse(v.ToString(), out b) && b;
+        }
 
-                    if (dict.ContainsKey("notes") && dict["notes"] is System.Collections.Generic.Dictionary<string, object>) {
-                        var notesDict = (System.Collections.Generic.Dictionary<string, object>)dict["notes"];
-                        if (notesDict.ContainsKey("zh")) m.NotesZh = Convert.ToString(notesDict["zh"]);
-                        if (notesDict.ContainsKey("en")) m.NotesEn = Convert.ToString(notesDict["en"]);
+        // ───── 下載與驗證 ─────
+        public static void DownloadFile(string url, string dest, long expectedSize, Action<long, long> progress, Func<bool> cancel) {
+            string part = dest + ".part";
+            WebRequest req = WebRequest.Create(url);
+            req.Timeout = 30000;
+            HttpWebRequest http = req as HttpWebRequest;
+            if (http != null) {
+                http.ReadWriteTimeout = 60000;
+                http.UserAgent = "DebateCompanion-Updater/" + CurrentBuildVersion;
+                http.AllowAutoRedirect = true;
+            }
+            using (WebResponse resp = req.GetResponse()) {
+                long total = resp.ContentLength > 0 ? resp.ContentLength : expectedSize;
+                using (Stream src = resp.GetResponseStream())
+                using (FileStream fs = new FileStream(part, FileMode.Create, FileAccess.Write)) {
+                    byte[] buf = new byte[81920];
+                    long done = 0;
+                    int read;
+                    DateTime last = DateTime.MinValue;
+                    while ((read = src.Read(buf, 0, buf.Length)) > 0) {
+                        if (cancel != null && cancel()) throw new OperationCanceledException();
+                        fs.Write(buf, 0, read);
+                        done += read;
+                        if (progress != null && (DateTime.Now - last).TotalMilliseconds > 120) {
+                            last = DateTime.Now;
+                            progress(done, total);
+                        }
                     }
-                    return m;
+                    if (progress != null) progress(done, total);
                 }
-            } catch {
-                return null;
             }
+            if (File.Exists(dest)) File.Delete(dest);
+            File.Move(part, dest);
         }
 
-        public static bool VerifySha256(string filePath, string expectedSha256) {
-            if (string.IsNullOrEmpty(expectedSha256) || !File.Exists(filePath)) return false;
+        public static string Sha256Of(string path) {
             using (var sha = SHA256.Create())
-            using (var stream = File.OpenRead(filePath)) {
-                byte[] hash = sha.ComputeHash(stream);
-                StringBuilder sb = new StringBuilder();
-                foreach (byte b in hash) sb.Append(b.ToString("x2"));
-                return string.Equals(sb.ToString(), expectedSha256.Trim(), StringComparison.OrdinalIgnoreCase);
+            using (var fs = File.OpenRead(path)) {
+                byte[] h = sha.ComputeHash(fs);
+                var sb = new StringBuilder(h.Length * 2);
+                foreach (byte b in h) sb.Append(b.ToString("x2"));
+                return sb.ToString();
             }
         }
 
-        // ==========================================
-        // Custom WPF UI Styling conforming to wason.dev
-        // ==========================================
-        public static readonly Color ColorPaper = Color.FromRgb(0xF1, 0xEC, 0xE2);
-        public static readonly Color ColorPaper2 = Color.FromRgb(0xE7, 0xE0, 0xD2);
-        public static readonly Color ColorPaper3 = Color.FromRgb(0xDD, 0xD4, 0xC3);
-        public static readonly Color ColorPaperCard = Color.FromRgb(0xFA, 0xF7, 0xF2);
-        public static readonly Color ColorInk = Color.FromRgb(0x1D, 0x1B, 0x17);
-        public static readonly Color ColorInk2 = Color.FromRgb(0x4C, 0x48, 0x40);
-        public static readonly Color ColorInk3 = Color.FromRgb(0x85, 0x7F, 0x73);
-        public static readonly Color ColorRule = Color.FromRgb(0xCF, 0xC6, 0xB4);
-        public static readonly Color ColorShu = Color.FromRgb(0xB9, 0x47, 0x2B);
-        public static readonly Color ColorShuDark = Color.FromRgb(0x8E, 0x33, 0x20);
-
-        public static Window CreateWindowShell(string windowTitle, double width, double height, out StackPanel bodyPanel, out StackPanel buttonPanel) {
-            var win = new Window {
-                Title = windowTitle,
-                Width = width + 24,
-                Height = height + 24,
-                WindowStartupLocation = WindowStartupLocation.CenterScreen,
-                WindowStyle = WindowStyle.None,
-                AllowsTransparency = true,
-                Background = Brushes.Transparent,
-                ResizeMode = ResizeMode.NoResize
-            };
-
-            var outerBorder = new Border {
-                Margin = new Thickness(12),
-                CornerRadius = new CornerRadius(10),
-                Background = new SolidColorBrush(ColorPaper),
-                BorderBrush = new SolidColorBrush(ColorRule),
-                BorderThickness = new Thickness(1),
-                Effect = new DropShadowEffect {
-                    Color = Colors.Black,
-                    BlurRadius = 18,
-                    Opacity = 0.22,
-                    ShadowDepth = 5
-                }
-            };
-
-            var mainGrid = new Grid();
-            mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(42, GridUnitType.Pixel) });
-            mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(56, GridUnitType.Pixel) });
-
-            // TitleBar Header
-            var header = new Border {
-                Background = new SolidColorBrush(ColorPaper2),
-                CornerRadius = new CornerRadius(10, 10, 0, 0),
-                BorderBrush = new SolidColorBrush(ColorRule),
-                BorderThickness = new Thickness(0, 0, 0, 1),
-                Padding = new Thickness(12, 0, 8, 0)
-            };
-            header.MouseDown += (s, e) => {
-                if (e.ChangedButton == MouseButton.Left) win.DragMove();
-            };
-
-            var headerGrid = new Grid();
-            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            // Seal + Title
-            var titleBox = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            var seal = new Border {
-                Width = 20,
-                Height = 20,
-                CornerRadius = new CornerRadius(3),
-                Background = new SolidColorBrush(ColorShu),
-                Margin = new Thickness(0, 0, 8, 0)
-            };
-            var sealText = new TextBlock {
-                Text = "辯",
-                Foreground = new SolidColorBrush(ColorPaper),
-                FontSize = 11,
-                FontWeight = FontWeights.Bold,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            seal.Child = sealText;
-            titleBox.Children.Add(seal);
-
-            var titleText = new TextBlock {
-                Text = windowTitle,
-                FontSize = 13,
-                FontWeight = FontWeights.Bold,
-                Foreground = new SolidColorBrush(ColorInk),
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            titleBox.Children.Add(titleText);
-            Grid.SetColumn(titleBox, 0);
-            headerGrid.Children.Add(titleBox);
-
-            // Close button
-            var closeBtn = new Button {
-                Content = "✕",
-                Width = 28,
-                Height = 28,
-                Background = Brushes.Transparent,
-                BorderBrush = Brushes.Transparent,
-                Foreground = new SolidColorBrush(ColorInk2),
-                FontSize = 12,
-                Cursor = Cursors.Hand,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            closeBtn.Click += (s, e) => win.Close();
-            Grid.SetColumn(closeBtn, 2);
-            headerGrid.Children.Add(closeBtn);
-
-            header.Child = headerGrid;
-            Grid.SetRow(header, 0);
-            mainGrid.Children.Add(header);
-
-            // Body Card
-            var bodyBorder = new Border {
-                Margin = new Thickness(16, 12, 16, 8),
-                Padding = new Thickness(14),
-                Background = new SolidColorBrush(ColorPaperCard),
-                BorderBrush = new SolidColorBrush(ColorPaper3),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(6)
-            };
-            bodyPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            bodyBorder.Child = bodyPanel;
-            Grid.SetRow(bodyBorder, 1);
-            mainGrid.Children.Add(bodyBorder);
-
-            // Button Footer
-            var footer = new Border {
-                Background = new SolidColorBrush(ColorPaper2),
-                CornerRadius = new CornerRadius(0, 0, 10, 10),
-                BorderBrush = new SolidColorBrush(ColorRule),
-                BorderThickness = new Thickness(0, 1, 0, 0),
-                Padding = new Thickness(16, 0, 16, 0)
-            };
-            buttonPanel = new StackPanel {
-                Orientation = Orientation.Horizontal,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            footer.Child = buttonPanel;
-            Grid.SetRow(footer, 2);
-            mainGrid.Children.Add(footer);
-
-            outerBorder.Child = mainGrid;
-            win.Content = outerBorder;
-            return win;
+        public static void VerifyInstaller(string path, UpdateManifest m) {
+            using (var fs = File.OpenRead(path)) {
+                if (fs.Length < 1024 || fs.ReadByte() != 'M' || fs.ReadByte() != 'Z')
+                    throw new InvalidDataException("Downloaded file is not a valid executable");
+            }
+            if (!string.IsNullOrEmpty(m.Sha256)) {
+                string actual = Sha256Of(path);
+                if (!string.Equals(actual, m.Sha256.Trim(), StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("SHA-256 mismatch");
+            }
         }
 
-        public static Button CreateStyledButton(string text, bool isPrimary, double width = 110, double height = 32) {
-            var btn = new Button {
-                Content = text,
-                Width = width,
-                Height = height,
-                Cursor = Cursors.Hand,
-                FontWeight = isPrimary ? FontWeights.Bold : FontWeights.Normal,
-                FontSize = 12,
-                Margin = new Thickness(4, 0, 4, 0)
-            };
+        public static string InstallerDownloadPath(UpdateManifest m) {
+            return Path.Combine(DownloadDir, "DebateCompanionSetup-" + ParseVersion(m.Version).ToString(3) + ".exe");
+        }
 
-            var bg = isPrimary ? new SolidColorBrush(ColorShu) : new SolidColorBrush(ColorPaper2);
-            var fg = isPrimary ? Brushes.White : new SolidColorBrush(ColorInk);
-            var border = isPrimary ? new SolidColorBrush(ColorShuDark) : new SolidColorBrush(ColorRule);
+        public static void CleanupOldDownloads() {
+            try {
+                string self = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                foreach (string f in Directory.GetFiles(DownloadDir)) {
+                    if (string.Equals(f, self, StringComparison.OrdinalIgnoreCase)) continue;
+                    try { if ((DateTime.Now - File.GetLastWriteTime(f)).TotalDays > 1) File.Delete(f); } catch { }
+                }
+            } catch { }
+        }
 
-            btn.Background = bg;
-            btn.Foreground = fg;
-            btn.BorderBrush = border;
-            btn.BorderThickness = new Thickness(1);
+        public static string FormatSize(long bytes) {
+            if (bytes <= 0) return "—";
+            return (bytes / 1024.0 / 1024.0).ToString("0.0") + " MB";
+        }
 
-            return btn;
+        public static string Quote(string arg) {
+            return "\"" + (arg ?? "").Replace("\"", "\\\"") + "\"";
         }
 
         [DllImport("shell32.dll")]
-        private static extern void SHChangeNotify(int wEventId, uint uFlags, IntPtr dwItem1, IntPtr dwItem2);
+        public static extern void SHChangeNotify(int wEventId, uint uFlags, IntPtr dwItem1, IntPtr dwItem2);
 
         public static void NotifyShell() {
             try {
-                // SHCNE_ASSOCCHANGED = 0x08000000, SHCNF_IDLIST = 0x0000
-                SHChangeNotify(0x08000000, 0x0000, IntPtr.Zero, IntPtr.Zero);
+                SHChangeNotify(0x08000000, 0x1000, IntPtr.Zero, IntPtr.Zero);
             } catch { }
         }
+    }
 
-        public static void CreateShortcut(string shortcutPath, string targetPath, string workingDir, string description) {
+    public class UpdateState {
+        public long SnoozeUntilTicks;
+        public string Lang;
+
+        static string FilePath { get { return Path.Combine(UpdateCommon.StateDir, "update-state.json"); } }
+
+        public static UpdateState Load() {
+            var s = new UpdateState();
             try {
-                Type shellType = Type.GetTypeFromProgID("WScript.Shell");
-                if (shellType == null) return;
-                dynamic shell = Activator.CreateInstance(shellType);
-                dynamic shortcut = shell.CreateShortcut(shortcutPath);
-                shortcut.TargetPath = targetPath;
-                shortcut.WorkingDirectory = workingDir;
-                shortcut.IconLocation = targetPath + ",0";
-                shortcut.Description = description;
-                shortcut.Save();
-            } catch { }
-        }
-
-        public static void KillProcesses(params string[] processNames) {
-            foreach (var name in processNames) {
-                try {
-                    foreach (var proc in Process.GetProcessesByName(name)) {
-                        try {
-                            proc.Kill();
-                            proc.WaitForExit(2000);
-                        } catch { }
+                if (File.Exists(FilePath)) {
+                    var d = new JavaScriptSerializer().DeserializeObject(File.ReadAllText(FilePath, Encoding.UTF8)) as Dictionary<string, object>;
+                    if (d != null) {
+                        object v;
+                        if (d.TryGetValue("snoozeUntil", out v) && v != null) {
+                            DateTime dt;
+                            if (DateTime.TryParse(v.ToString(), System.Globalization.CultureInfo.InvariantCulture,
+                                System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out dt))
+                                s.SnoozeUntilTicks = dt.Ticks;
+                        }
+                        if (d.TryGetValue("lang", out v) && v != null) s.Lang = v.ToString();
                     }
-                } catch { }
-            }
+                }
+            } catch (Exception ex) { UpdateCommon.Log("State load failed: " + ex.Message); }
+            return s;
         }
 
-        public static void ScheduleDirectoryDeletion(string dirPath) {
+        public void Save() {
             try {
-                if (string.IsNullOrEmpty(dirPath) || !Directory.Exists(dirPath)) return;
-                // Launch detached cmd that waits 1.5 seconds for the current process to exit, then recursively deletes dirPath
-                string cmd = string.Format("/C ping 127.0.0.1 -n 3 > nul & rd /s /q \"{0}\"", dirPath);
-                var psi = new ProcessStartInfo {
-                    FileName = "cmd.exe",
-                    Arguments = cmd,
-                    WindowStyle = ProcessWindowStyle.Hidden,
-                    CreateNoWindow = true,
-                    UseShellExecute = false
-                };
-                Process.Start(psi);
-            } catch { }
+                var d = new Dictionary<string, object>();
+                if (SnoozeUntilTicks > 0) d["snoozeUntil"] = new DateTime(SnoozeUntilTicks, DateTimeKind.Utc).ToString("o");
+                if (!string.IsNullOrEmpty(Lang)) d["lang"] = Lang;
+                File.WriteAllText(FilePath, new JavaScriptSerializer().Serialize(d), new UTF8Encoding(false));
+            } catch (Exception ex) { UpdateCommon.Log("State save failed: " + ex.Message); }
         }
+
+        public bool IsSnoozed { get { return SnoozeUntilTicks > DateTime.UtcNow.Ticks; } }
+        public DateTime SnoozeUntilLocal { get { return new DateTime(SnoozeUntilTicks, DateTimeKind.Utc).ToLocalTime(); } }
     }
 }

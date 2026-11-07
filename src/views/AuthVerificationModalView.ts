@@ -130,7 +130,7 @@ export class AuthVerificationModalView {
     this.container.querySelector('#btn-open-web-auth')?.addEventListener('click', () => {
       const port = 48231;
       const redirectUri = encodeURIComponent(`http://127.0.0.1:${port}/auth/callback`);
-      const webUrl = `https://wason.dev/lab/debate-prep?action=desk_login&redirect=${redirectUri}`;
+      const webUrl = `https://wason.dev/debate?action=desk_login&redirect=${redirectUri}`;
 
       const electronAPI = (window as any).electronAPI;
       if (electronAPI?.openExternal) {
