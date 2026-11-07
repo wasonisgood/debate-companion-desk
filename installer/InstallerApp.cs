@@ -142,7 +142,7 @@ namespace DebateCompanion {
             }
 
             // Create Desktop and Start Menu shortcuts
-            string exePath = Path.Combine(installDir, "DebateCompanion.exe");
+            string exePath = GetMainExePath(installDir);
             try {
                 string desktopDir = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
                 UpdateCommon.CreateShortcut(Path.Combine(desktopDir, "模擬庭提問陪伴台帳.lnk"), exePath, installDir, "模擬庭提問陪伴台帳");
@@ -157,9 +157,25 @@ namespace DebateCompanion {
             RegisterUninstall(installDir);
         }
 
+        private static string GetMainExePath(string installDir) {
+            string p1 = Path.Combine(installDir, "辯論陪伴台帳.exe");
+            if (File.Exists(p1)) return p1;
+            string p2 = Path.Combine(installDir, "DebateCompanion.exe");
+            if (File.Exists(p2)) return p2;
+            try {
+                foreach (var f in Directory.GetFiles(installDir, "*.exe")) {
+                    string n = Path.GetFileName(f).ToLowerInvariant();
+                    if (!n.Contains("setup") && !n.Contains("uninstall") && !n.Contains("updater")) {
+                        return f;
+                    }
+                }
+            } catch { }
+            return p1;
+        }
+
         private static void RegisterProtocol(string installDir) {
             try {
-                string exePath = Path.Combine(installDir, "DebateCompanion.exe");
+                string exePath = GetMainExePath(installDir);
                 using (var key = Registry.CurrentUser.CreateSubKey(@"Software\Classes\debate-companion")) {
                     key.SetValue("", "URL:Debate Companion Protocol");
                     key.SetValue("URL Protocol", "");
@@ -172,7 +188,7 @@ namespace DebateCompanion {
 
         private static void RegisterUninstall(string installDir) {
             try {
-                string exePath = Path.Combine(installDir, "DebateCompanion.exe");
+                string exePath = GetMainExePath(installDir);
                 string uninstPath = Path.Combine(installDir, "uninstall.exe");
 
                 long totalBytes = 0;
@@ -207,7 +223,7 @@ namespace DebateCompanion {
         }
 
         private static void LaunchInstalledApp() {
-            string exePath = Path.Combine(GetInstallDir(), "DebateCompanion.exe");
+            string exePath = GetMainExePath(GetInstallDir());
             if (File.Exists(exePath)) {
                 System.Diagnostics.Process.Start(exePath);
             }

@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-electron/
+release/
 *.log
 *.tmp
 tests/e2e/screenshots/*.html
