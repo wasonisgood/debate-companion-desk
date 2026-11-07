@@ -1,4 +1,4 @@
-name: Release & Package Windows Executables
+name: Release & Package Windows Executables (Linux Runner)
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-and-release:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     permissions:
       contents: write
 
@@ -23,27 +23,33 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm install
-
-      - name: Build Web Renderer & Electron Logic
-        run: npm run build
+        run: npm ci
 
       - name: Run Verification Tests
-        run: npm test
-
-      - name: Package Windows Binary and Embedded Installer
         run: |
-          powershell -ExecutionPolicy Bypass -File installer/build_installer.ps1
+          npm run check
+          npm test
+
+      - name: Build Web Renderer
+        run: npm run build
+
+      - name: Cross-Package Windows Executables on Linux
+        run: |
+          npx electron-builder --win portable zip
+
+      - name: Generate Update Manifest (latest.json)
+        run: |
+          node installer/generate_manifest.js
 
       - name: Create GitHub Release and Upload Artifacts
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         with:
           files: |
-            DebateCompanionSetup.exe
+            release/*.exe
+            release/*.zip
             installer/publish/latest.json
-            installer/DebateCompanionUpdater.exe
-            installer/uninstall.exe
+            DebateCompanionSetup.exe
           generate_release_notes: true
           draft: false
           prerelease: false

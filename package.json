@@ -12,7 +12,28 @@
     "check": "tsc --noEmit",
     "test": "tsx --test tests/unit/**/*.test.ts tests/e2e/**/*.test.ts",
     "start": "electron .",
+    "dist:win": "npm run build && electron-builder --win portable zip",
     "installer": "powershell -ExecutionPolicy Bypass -File installer/build_installer.ps1"
+  },
+  "build": {
+    "appId": "com.mootcourt.debatecompanion",
+    "productName": "辯論陪伴台帳",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json",
+      "app.ico"
+    ],
+    "win": {
+      "target": [
+        "portable",
+        "zip"
+      ],
+      "icon": "app.ico"
+    }
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1"
@@ -20,6 +41,7 @@
   "devDependencies": {
     "@types/node": "^22.13.9",
     "electron": "^35.0.0",
+    "electron-builder": "^26.18.0",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
     "vite": "^6.2.0"

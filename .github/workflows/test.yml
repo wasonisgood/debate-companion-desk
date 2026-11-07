@@ -1,4 +1,4 @@
-name: Test & Lint Suite
+name: Test & Lint Suite (Linux CI)
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Code
@@ -21,13 +21,13 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Type Check & Lint
+      - name: Type Check
         run: npm run check
 
-      - name: Run Unit Tests
+      - name: Run Unit & E2E Tests
         run: npm test
 
-      - name: Compile Native Windows Installers
-        run: powershell -ExecutionPolicy Bypass -File installer/build_installer.ps1
+      - name: Verify Web Build
+        run: npm run build
