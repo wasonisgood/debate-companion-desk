@@ -206,6 +206,8 @@ function createWindow() {
     onAuthTokenReceived: (session) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('admin-auth-granted', session);
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.show();
         mainWindow.focus();
       }
     },

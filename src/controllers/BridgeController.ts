@@ -3,15 +3,22 @@ import { AuthModel } from '../models/AuthModel';
 
 export class BridgeController {
   private authModel: AuthModel;
-  private onAuthSuccess?: (session: AuthSession) => void;
+  private listeners: Array<(session: AuthSession) => void> = [];
 
   constructor(authModel: AuthModel) {
     this.authModel = authModel;
     this.setupWindowListeners();
   }
 
+  public onAuthSuccess(cb: (session: AuthSession) => void): () => void {
+    this.listeners.push(cb);
+    return () => {
+      this.listeners = this.listeners.filter(l => l !== cb);
+    };
+  }
+
   public setOnAuthSuccess(cb: (session: AuthSession) => void): void {
-    this.onAuthSuccess = cb;
+    this.listeners.push(cb);
   }
 
   private setupWindowListeners(): void {
@@ -36,8 +43,12 @@ export class BridgeController {
   public handleAuthSession(session: AuthSession): void {
     if (!session || !session.token) return;
     this.authModel.setSession(session);
-    if (this.onAuthSuccess) {
-      this.onAuthSuccess(session);
+    for (const listener of this.listeners) {
+      try {
+        listener(session);
+      } catch (e) {
+        console.error('Error in onAuthSuccess listener:', e);
+      }
     }
   }
 
@@ -47,6 +58,6 @@ export class BridgeController {
    */
   public getWebLoginUrl(port: number = 48231): string {
     const redirectUri = encodeURIComponent(`http://127.0.0.1:${port}/auth/callback`);
-    return `https://wasonisgood.github.io/wasm_web/#/debate?action=desk_login&redirect=${redirectUri}`;
+    return `https://wason.dev/debate?action=desk_login&redirect=${redirectUri}`;
   }
 }

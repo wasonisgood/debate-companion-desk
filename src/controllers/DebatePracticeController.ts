@@ -14,7 +14,7 @@ import { SpeechRecognitionController } from './SpeechRecognitionController';
 import { TTSController } from './TTSController';
 import { BridgeController } from './BridgeController';
 
-import type { Side, CounselSeat, BenchQuestion, OralUnit } from '../types';
+import type { Side, CounselSeat, BenchQuestion, OralUnit, AuthSession } from '../types';
 
 export class DebatePracticeController {
   public debateModel: DebateModel;
@@ -35,6 +35,7 @@ export class DebatePracticeController {
 
   public onPopoutTrigger?: (q: BenchQuestion, reason: string) => void;
   public onStateChanged?: () => void;
+  public onAuthGranted?: (session: AuthSession) => void;
 
   constructor() {
     this.debateModel = new DebateModel();
@@ -59,15 +60,21 @@ export class DebatePracticeController {
     this.speechController = new SpeechRecognitionController();
     this.ttsController = new TTSController();
     this.bridgeController = new BridgeController(this.authModel);
-    this.bridgeController.setOnAuthSuccess(async () => {
-      try {
-        const { SupabaseService } = await import('../services/SupabaseService');
-        const bank = await SupabaseService.getInstance().loadDebateBank();
-        if (bank && bank.data) {
-          this.debateModel.updateData(bank.data);
-          this.switchSide(this.settingsModel.getSettings().targetSide);
-        }
-      } catch (_) {}
+    this.bridgeController.setOnAuthSuccess((session) => {
+      if (this.onAuthGranted) {
+        this.onAuthGranted(session);
+      }
+      // Asynchronously fetch debate bank without blocking instant UI auth transition
+      (async () => {
+        try {
+          const { SupabaseService } = await import('../services/SupabaseService');
+          const bank = await SupabaseService.getInstance().loadDebateBank();
+          if (bank && bank.data) {
+            this.debateModel.updateData(bank.data);
+            this.switchSide(this.settingsModel.getSettings().targetSide);
+          }
+        } catch (_) {}
+      })();
     });
 
     this.setupOrchestration();

@@ -169,7 +169,9 @@ export class AppView {
       this.controller.authModel,
       {
         onAuthenticated: () => {
-          this.titleBarView.setSyncStatus('網站授權成功，正在同步辯論庫', true);
+          const session = this.controller.authModel.getSession();
+          const name = session?.userName || '研究員';
+          this.titleBarView.setSyncStatus(`已授權 (${name})，雲端庫同步中`, true);
           this.syncCloudDebateBank();
         },
         onDismissOffline: () => {
@@ -177,6 +179,14 @@ export class AppView {
         }
       }
     );
+
+    // Listen for automatic authorization grant via web handoff or bridge protocol
+    this.controller.onAuthGranted = (session) => {
+      this.authVerificationModalView.handleAuthGranted(session);
+      const name = session?.userName || '研究員';
+      this.titleBarView.setSyncStatus(`已授權 (${name})`, true);
+      this.syncCloudDebateBank();
+    };
 
     // 11. Update Modal View
     const updateModalEl = this.root.querySelector('#update-modal-container') as HTMLElement;

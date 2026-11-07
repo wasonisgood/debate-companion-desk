@@ -1,5 +1,6 @@
 import { AuthModel } from '../models/AuthModel';
 import { SupabaseService } from '../services/SupabaseService';
+import type { AuthSession } from '../types';
 
 export interface AuthVerificationCallbacks {
   onAuthenticated: () => void;
@@ -25,6 +26,39 @@ export class AuthVerificationModalView {
 
   public close(): void {
     this.container.style.display = 'none';
+  }
+
+  public handleAuthGranted(session?: AuthSession): void {
+    const s = session || this.authModel.getSession();
+    const name = s?.userName || '研究員';
+
+    // If modal is visible, render human-crafted success feedback conforming to classical scholar style
+    const card = this.container.querySelector('.card') as HTMLElement;
+    if (card && this.container.style.display !== 'none') {
+      card.innerHTML = `
+        <div style="text-align: center; padding: 1.5rem 0.5rem; animation: fadeIn 0.3s ease;">
+          <div style="display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 50%; background: rgba(74, 124, 89, 0.12); border: 2px solid var(--koke); color: var(--koke); font-size: 1.8rem; margin-bottom: 1rem;">
+            ✓
+          </div>
+          <h2 style="margin: 0 0 0.6rem 0; font-size: 1.25rem; color: var(--ink); font-family: var(--serif);">網站授權驗證成功</h2>
+          <p style="font-size: 0.9rem; color: var(--ink-2); margin-bottom: 1.2rem; line-height: 1.6;">
+            已成功完成 <strong>wason.dev</strong> 官方網站授權連線<br>
+            歡迎 <strong>${name}</strong>，專屬辯論資料庫已載入。
+          </p>
+          <div style="font-size: 0.8rem; color: var(--koke); font-weight: 500;">
+            正在進入案頭陪伴工作區...
+          </div>
+        </div>
+      `;
+
+      setTimeout(() => {
+        this.close();
+        this.callbacks.onAuthenticated();
+      }, 700);
+    } else {
+      this.close();
+      this.callbacks.onAuthenticated();
+    }
   }
 
   public render(): void {
@@ -165,19 +199,18 @@ export class AuthVerificationModalView {
       if (btn) btn.textContent = '驗證中...';
 
       try {
-        const bank = await SupabaseService.getInstance().loadDebateBank(val);
-        this.authModel.setDebateCode(val);
-        this.authModel.setSession({
+        await SupabaseService.getInstance().loadDebateBank(val);
+        const session: AuthSession = {
           userId: 'code_user',
           userName: `研究員 (${val})`,
           userEmail: '',
           token: val,
           role: 'member',
           authorizedAt: Date.now()
-        });
-
-        this.render();
-        this.callbacks.onAuthenticated();
+        };
+        this.authModel.setDebateCode(val);
+        this.authModel.setSession(session);
+        this.handleAuthGranted(session);
       } catch (e: any) {
         if (errBox) {
           errBox.textContent = `驗證失敗: ${e.message || '無法連線至雲端資料庫'}`;
