@@ -112,6 +112,9 @@ export class SpeechRecognitionController {
       this.broadcast(accumulated, index % 6 === 0 || index === words.length - 1);
       index++;
     }, speedMs);
+    if (this.mockInterval && typeof this.mockInterval.unref === 'function') {
+      this.mockInterval.unref();
+    }
   }
 
   private broadcast(transcript: string, isFinal: boolean): void {

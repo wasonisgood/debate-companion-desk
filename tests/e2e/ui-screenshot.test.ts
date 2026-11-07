@@ -86,5 +86,10 @@ describe('UI E2E Lifecycle & Visual Snapshot Verification', () => {
 
     fs.writeFileSync(path.join(outDir, 'workspace-active.html'), htmlSnapshot, 'utf-8');
     assert.ok(fs.existsSync(path.join(outDir, 'workspace-active.html')));
+
+    // Cleanup controllers so Node event loop terminates immediately
+    controller.timerController.reset();
+    controller.speechController.stop();
+    controller.recordingController.stopRecording();
   });
 });

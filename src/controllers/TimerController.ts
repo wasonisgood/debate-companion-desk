@@ -52,6 +52,9 @@ export class TimerController {
     this.intervalId = setInterval(() => {
       this.tick();
     }, 1000);
+    if (this.intervalId && typeof this.intervalId.unref === 'function') {
+      this.intervalId.unref();
+    }
 
     this.notify();
   }
