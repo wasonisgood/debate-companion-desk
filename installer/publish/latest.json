@@ -1,0 +1,13 @@
+{
+    "version":  "1.0.0",
+    "minimumVersion":  "1.0.0",
+    "mandatory":  false,
+    "releaseDate":  "2026-11-07",
+    "installerUrl":  "https://github.com/wasonisgood/debate-companion-desk/releases/download/v1.0.0/DebateCompanionSetup.exe",
+    "size":  102400,
+    "sha256":  "01bef56d1787ad99498d71f8bf368a905d6d4f84a4d8837afc33092aebb4fd7b",
+    "notes":  {
+                  "zh":  "・新增 Surface 觸控與手勢深度最佳化（滑動、雙擊與快捷觸控環）。\n・新增即時對照口說稿與架構圖 (Roadmap) 節點即時高亮。\n・新增智慧自動計時與模擬庭兩分鐘/時間到自動響鈴。\n・新增老師講評自動獨立切分與離線雲端雙向同步。\n・支援網頁端全身驗證接回 (debate-companion:// 協定與本地 HTTP 橋接)。",
+                  "en":  "・Added Surface Pro touch gesture optimization and custom touch radial menu.\n・Added real-time oral argument alignment and interactive roadmap DAG.\n・Added smart moot court timer with official warning \u0026 finish bells.\n・Added coach feedback automatic segmentation and offline cloud sync.\n・Supported Web SSO authentication handoff via custom protocol."
+              }
+}

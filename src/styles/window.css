@@ -1,0 +1,223 @@
+/* Custom Frameless Window & Titlebar conforming to debate module aesthetic */
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: var(--step-0);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#custom-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 38px;
+  background: var(--paper-2);
+  border-bottom: 1px solid var(--rule);
+  padding: 0 0.5rem;
+  -webkit-app-region: drag;
+  z-index: 1000;
+}
+
+.titlebar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  -webkit-app-region: no-drag;
+}
+
+.app-branding {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+}
+
+.app-seal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: var(--shu);
+  color: var(--paper);
+  border-radius: var(--radius);
+  font-size: 0.72rem;
+  font-family: var(--serif);
+  font-weight: bold;
+}
+
+/* Custom Dropdown Menus */
+.custom-menu-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.custom-menu-item {
+  position: relative;
+  display: inline-block;
+}
+
+.custom-menu-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 0.25rem 0.55rem;
+  font-family: var(--serif);
+  font-size: 0.8rem;
+  color: var(--ink-2);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.custom-menu-btn:hover,
+.custom-menu-item.active .custom-menu-btn {
+  background: var(--paper-3);
+  color: var(--ink);
+  border-color: var(--rule);
+}
+
+.custom-dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 160px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius);
+  display: none;
+  flex-direction: column;
+  padding: 0.35rem 0;
+  z-index: 2000;
+}
+
+.custom-menu-item.active .custom-dropdown-list {
+  display: flex;
+}
+
+.dropdown-action-btn {
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.82rem;
+  font-family: var(--serif);
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.dropdown-action-btn:hover {
+  background: var(--paper-2);
+  color: var(--shu);
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: var(--rule);
+  margin: 0.3rem 0;
+}
+
+/* Center Status Pills */
+.titlebar-center {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  -webkit-app-region: drag;
+}
+
+.badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink-2);
+}
+
+.badge-status.rec {
+  background: var(--shu-wash);
+  color: var(--shu-ink);
+  border-color: var(--shu);
+  animation: pulseRec 1.8s infinite;
+}
+
+.badge-status.rec-dot {
+  width: 7px;
+  height: 7px;
+  background: var(--shu);
+  border-radius: 50%;
+}
+
+.badge-status.sync-ok {
+  color: var(--koke);
+  border-color: var(--koke);
+}
+
+@keyframes pulseRec {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Right Window Controls */
+.titlebar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  -webkit-app-region: no-drag;
+}
+
+.win-control-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-2);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+.win-control-btn:hover {
+  background: var(--paper-3);
+  color: var(--ink);
+  border-color: var(--rule);
+}
+
+.win-control-btn.close:hover {
+  background: var(--shu);
+  color: #fff;
+  border-color: var(--shu-ink);
+}
+
+.win-control-btn.float-toggle.active {
+  background: var(--ainezu-wash);
+  color: var(--ainezu);
+  border-color: var(--ainezu);
+}

@@ -1,0 +1,27 @@
+{
+  "name": "debate-companion-desk",
+  "private": true,
+  "version": "1.0.0",
+  "description": "辯士練習陪伴與研究員智能提問助手桌面端",
+  "author": "wasonisgood",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "check": "tsc --noEmit",
+    "test": "tsx --test tests/unit/**/*.test.ts tests/e2e/**/*.test.ts",
+    "start": "electron .",
+    "installer": "powershell -ExecutionPolicy Bypass -File installer/build_installer.ps1"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "electron": "^35.0.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0"
+  }
+}

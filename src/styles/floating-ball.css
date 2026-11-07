@@ -1,0 +1,106 @@
+/* Floating Ball (懸浮球) Widget Styles */
+
+#floating-ball-widget {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 2px solid var(--rule);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  z-index: 9999;
+  transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.1, 1), box-shadow 0.2s ease;
+  touch-action: none;
+}
+
+#floating-ball-widget:active {
+  cursor: grabbing;
+  transform: scale(0.95);
+}
+
+#floating-ball-widget.recording {
+  border-color: var(--shu);
+  box-shadow: 0 0 16px rgba(185, 71, 43, 0.35);
+}
+
+#floating-ball-widget.alert-trigger {
+  animation: bounceAlert 1s infinite alternate;
+  border-color: var(--shu);
+}
+
+@keyframes bounceAlert {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.12); }
+}
+
+.floating-ball-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.floating-ball-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.floating-ball-timer {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  font-weight: bold;
+  color: var(--ink-2);
+}
+
+/* Quick Radial Action Menu attached to floating ball */
+.floating-quick-menu {
+  position: absolute;
+  bottom: 70px;
+  right: 0;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 0.5rem;
+  display: none;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 180px;
+}
+
+.floating-quick-menu.open {
+  display: flex;
+  animation: popIn 0.15s ease-out;
+}
+
+.quick-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--paper-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  font-size: 0.82rem;
+  cursor: pointer;
+  color: var(--ink);
+  transition: all 0.15s ease;
+}
+
+.quick-menu-item:hover {
+  background: var(--paper-3);
+  border-color: var(--rule);
+  color: var(--shu);
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.9) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}

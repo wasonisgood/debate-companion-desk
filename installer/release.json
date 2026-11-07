@@ -1,0 +1,14 @@
+{
+  "_comment": "版本號取自 package.json 的 version。每次發版修改本檔，CI 與 build_installer.ps1 會自動生成 latest.json 與安裝檔。",
+  "githubRepo": "wasonisgood/debate-companion-desk",
+  "installerFileName": "DebateCompanionSetup.exe",
+  "productName": "辯論陪伴台帳",
+  "appUserModelId": "com.mootcourt.debatecompanion",
+  "protocol": "debate-companion",
+  "minimumVersion": "1.0.0",
+  "mandatory": false,
+  "notes": {
+    "zh": "・新增 Surface 觸控與手勢深度最佳化（滑動、雙擊與快捷觸控環）。\n・新增即時對照口說稿與架構圖 (Roadmap) 節點即時高亮。\n・新增智慧自動計時與模擬庭兩分鐘/時間到自動響鈴。\n・新增老師講評自動獨立切分與離線雲端雙向同步。\n・支援網頁端全身驗證接回 (debate-companion:// 協定與本地 HTTP 橋接)。",
+    "en": "・Added Surface Pro touch gesture optimization and custom touch radial menu.\n・Added real-time oral argument alignment and interactive roadmap DAG.\n・Added smart moot court timer with official warning & finish bells.\n・Added coach feedback automatic segmentation and offline cloud sync.\n・Supported Web SSO authentication handoff via custom protocol."
+  }
+}

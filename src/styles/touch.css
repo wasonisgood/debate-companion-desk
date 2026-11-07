@@ -1,0 +1,100 @@
+/* Surface Touch & Gesture Ergonomics Styles */
+
+/* Enforce 44px minimum touch targets on interactive controls */
+@media (pointer: coarse) {
+  .btn,
+  .pill-item,
+  .custom-menu-btn,
+  .win-control-btn,
+  .roadmap-node,
+  .quick-menu-item {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.6rem 1rem;
+  }
+
+  .script-viewer {
+    font-size: 1.15rem;
+    line-height: 2;
+  }
+}
+
+/* Touch feedback ripple */
+.touch-ripple {
+  position: absolute;
+  border-radius: 50%;
+  transform: scale(0);
+  animation: touchRippleAnim 0.5s linear;
+  background-color: rgba(185, 71, 43, 0.2);
+  pointer-events: none;
+}
+
+@keyframes touchRippleAnim {
+  to {
+    transform: scale(3.5);
+    opacity: 0;
+  }
+}
+
+/* Swipe hint visual bar */
+.touch-gesture-hint {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48px;
+  height: 4px;
+  background: var(--rule);
+  border-radius: var(--radius-full);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Surface Touch Quick Action Ring (長按或三指呼叫快捷圓環) */
+#touch-radial-ring {
+  position: fixed;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: rgba(241, 236, 226, 0.95);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-lg);
+  border: 2px solid var(--rule);
+  z-index: 10000;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.1, 1), opacity 0.2s ease;
+  pointer-events: none;
+}
+
+#touch-radial-ring.active {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.radial-sector {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  color: var(--ink);
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition: all 0.15s ease;
+}
+
+.radial-sector:hover,
+.radial-sector:active {
+  background: var(--shu);
+  color: #fff;
+  border-color: var(--shu-ink);
+  transform: translate(-50%, -50%) scale(1.15);
+}

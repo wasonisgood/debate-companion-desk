@@ -1,0 +1,79 @@
+/*
+ * Palette — named after traditional Japanese/Chinese dye colours, tuned in
+ * OKLCH so light and dark keep the same perceived contrast steps.
+ *
+ *   胡粉 gofun     paper            #F1ECE2
+ *   生成 kinari    paper, inset     #E7E0D2
+ *   墨   sumi      ink              #1D1B17
+ *   鈍   nibi      secondary ink    #4C4840
+ *   利休鼠 rikyū   meta / captions  #857F73
+ *   砂   suna      hairlines        #CFC6B4
+ *   朱   shu       the one accent   #B9472B
+ *   苔   koke      quiet second     #5F6B3A
+ *   藍鼠 ainezu    links in code    #3D5368
+ */
+:root {
+  --paper: #F1ECE2;
+  --paper-2: #E7E0D2;
+  --paper-3: #DDD4C3;
+  --ink: #1D1B17;
+  --ink-2: #4C4840;
+  --ink-3: #857F73;
+  --rule: #CFC6B4;
+  --shu: #B9472B;
+  --shu-ink: #8E3320;
+  --shu-wash: #EBD3C4;
+  --koke: #5F6B3A;
+  --koke-wash: #E2E8D2;
+  --ainezu: #3D5368;
+  --ainezu-wash: #D3DFE8;
+  --sel: #EBC9B6;
+
+  --serif: "Noto Serif TC", "Source Han Serif TC", "Songti TC", serif;
+  --latin: "Newsreader", "Noto Serif TC", Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --step--2: clamp(0.7rem, 0.68rem + 0.1vw, 0.76rem);
+  --step--1: clamp(0.78rem, 0.76rem + 0.1vw, 0.84rem);
+  --step-0: clamp(1rem, 0.96rem + 0.2vw, 1.125rem);
+  --step-1: clamp(1.2rem, 1.1rem + 0.45vw, 1.45rem);
+  --step-2: clamp(1.5rem, 1.25rem + 1vw, 2.1rem);
+  --step-3: clamp(2rem, 1.5rem + 2.2vw, 3.4rem);
+
+  --gutter: clamp(16px, 4vw, 56px);
+  --radius: 3px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+  --ease: cubic-bezier(.2, .7, .1, 1);
+  --shadow-sm: 0 2px 6px rgba(29, 27, 23, 0.08);
+  --shadow-md: 0 6px 18px rgba(29, 27, 23, 0.12);
+  --shadow-lg: 0 12px 32px rgba(29, 27, 23, 0.18);
+
+  /* Surface touch standards */
+  --touch-target: 44px;
+  --touch-padding: 12px;
+
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --paper: #171612;
+  --paper-2: #201E19;
+  --paper-3: #2A2721;
+  --ink: #E9E3D6;
+  --ink-2: #BCB4A5;
+  --ink-3: #8A8274;
+  --rule: #38342C;
+  --shu: #E06A4B;
+  --shu-ink: #F08A6E;
+  --shu-wash: #3A2219;
+  --koke: #9AA66E;
+  --koke-wash: #2D331E;
+  --ainezu: #8FA7BD;
+  --ainezu-wash: #1C2732;
+  --sel: #5A2E20;
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.65);
+  color-scheme: dark;
+}

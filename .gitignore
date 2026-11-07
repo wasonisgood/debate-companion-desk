@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dist-electron/
+*.log
+*.tmp
+tests/e2e/screenshots/*.html
+installer/app-payload.zip
+installer/publish/*.exe
+DebateCompanionSetup.exe

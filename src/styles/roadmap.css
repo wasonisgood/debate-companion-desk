@@ -1,0 +1,119 @@
+/* Roadmap / Argument Tree Visualizer Styles */
+
+.roadmap-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  position: relative;
+}
+
+.roadmap-node {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  transition: all 0.2s cubic-bezier(0.2, 0.7, 0.1, 1);
+  cursor: pointer;
+  position: relative;
+  border-left: 4px solid var(--rule);
+}
+
+.roadmap-node:hover {
+  background: var(--paper-2);
+  border-color: var(--ink-2);
+}
+
+.roadmap-node.active {
+  border-left-color: var(--shu);
+  background: var(--paper);
+  box-shadow: 0 0 0 2px var(--shu-wash), var(--shadow-sm);
+  animation: pulseNode 2s infinite ease-in-out;
+}
+
+.roadmap-node.completed {
+  border-left-color: var(--koke);
+  opacity: 0.85;
+}
+
+.roadmap-node.completed .node-title {
+  color: var(--ink-2);
+}
+
+.roadmap-node.interrupted {
+  border-left-color: var(--ainezu);
+  background: var(--ainezu-wash);
+}
+
+@keyframes pulseNode {
+  0%, 100% {
+    box-shadow: 0 0 0 2px var(--shu-wash), var(--shadow-sm);
+  }
+  50% {
+    box-shadow: 0 0 0 5px var(--shu-wash), var(--shadow-md);
+  }
+}
+
+.node-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+}
+
+.node-tag {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--ink-3);
+  text-transform: uppercase;
+}
+
+.node-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.35;
+}
+
+.node-title-zh {
+  font-size: 0.78rem;
+  color: var(--ink-2);
+  margin-top: 0.2rem;
+}
+
+.node-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.node-pill-question {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-family: var(--mono);
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--radius);
+  background: var(--paper-3);
+  color: var(--ink-2);
+}
+
+.node-pill-question.has-pending {
+  background: var(--shu-wash);
+  color: var(--shu-ink);
+  font-weight: bold;
+}
+
+/* Connecting Line */
+.roadmap-connector {
+  width: 2px;
+  height: 16px;
+  background: var(--rule);
+  margin-left: 20px;
+}
+
+.roadmap-connector.active {
+  background: var(--shu);
+}
