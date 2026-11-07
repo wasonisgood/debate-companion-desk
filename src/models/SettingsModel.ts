@@ -16,6 +16,7 @@ export class SettingsModel {
       enableAutoRecording: true,
       enableFeedbackSegmentation: true,
       autoHidePopoutSec: 8,
+      interruptionSensitivity: 'balanced',
       ttsSpeed: 1.0,
       ttsVoiceName: '',
       bridgePort: 48231,

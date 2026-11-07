@@ -17,14 +17,14 @@ describe('AlignmentController', () => {
     assert.ok(result.progressPercent > 0);
   });
 
-  it('detects key legal interruption points', () => {
+  it('extracts active sentence accurately from oral script', () => {
     const attributionUnit = model.getOralUnitsForSide('prosecution', 1)[1];
     const attrController = new AlignmentController(attributionUnit);
 
-    const speech = 'The paramilitary force acted under the effective control of that State';
+    const speech = 'Turning to our first submission the actions of the Blue Brigade paramilitary force';
     const result = attrController.alignSpeech(speech);
 
-    assert.equal(result.isKeyInterruptionPoint, true);
-    assert.ok(result.recommendedQuestionId);
+    assert.ok(result.activeSentence.length > 0);
+    assert.ok(result.activeSentence.includes('Turning to our first submission'));
   });
 });

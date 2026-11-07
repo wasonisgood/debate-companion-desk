@@ -5,6 +5,7 @@
 
 export type Side = 'prosecution' | 'defense';
 export type CounselSeat = 1 | 2;
+export type InterruptionSensitivity = 'aggressive' | 'balanced' | 'conservative';
 
 export interface BenchQuestion {
   id: string;
@@ -97,8 +98,19 @@ export interface SpeechAlignmentResult {
   totalWordsCount: number;
   activeSentence: string;
   matchedFraction: number;
-  isKeyInterruptionPoint: boolean;
+}
+
+export interface InterruptionDecision {
+  shouldInterrupt: boolean;
+  confidence: number; // 0.0 - 1.0
+  urgency: 'high' | 'medium' | 'low';
+  rationale: string;
+  suggestedQuestionTopic: string;
   recommendedQuestionId?: string;
+  customQuestionEn?: string;
+  customQuestionZh?: string;
+  customFollowUpEn?: string;
+  customFollowUpZh?: string;
 }
 
 export interface LiveChineseSummary {
@@ -161,6 +173,7 @@ export interface AppSettings {
   enableAutoRecording: boolean;
   enableFeedbackSegmentation: boolean;
   autoHidePopoutSec: number;
+  interruptionSensitivity: InterruptionSensitivity;
   ttsSpeed: number;
   ttsVoiceName?: string;
   bridgePort: number;

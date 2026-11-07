@@ -5,6 +5,7 @@ import { ContextEngineModel } from '../models/ContextEngineModel';
 import { RecordingModel } from '../models/RecordingModel';
 import { SettingsModel } from '../models/SettingsModel';
 import { AuthModel } from '../models/AuthModel';
+import { AITimingJudgeModel } from '../models/AITimingJudgeModel';
 
 import { AlignmentController } from './AlignmentController';
 import { TimerController } from './TimerController';
@@ -23,6 +24,7 @@ export class DebatePracticeController {
   public recordingModel: RecordingModel;
   public settingsModel: SettingsModel;
   public authModel: AuthModel;
+  public aiTimingJudge: AITimingJudgeModel;
 
   public alignmentController: AlignmentController;
   public timerController: TimerController;
@@ -39,6 +41,7 @@ export class DebatePracticeController {
     this.settingsModel = new SettingsModel();
     this.authModel = new AuthModel();
     this.recordingModel = new RecordingModel();
+    this.aiTimingJudge = new AITimingJudgeModel();
 
     const side = this.settingsModel.getSettings().targetSide;
     const seat = this.settingsModel.getSettings().targetSeat;
@@ -101,14 +104,33 @@ export class DebatePracticeController {
       this.questionBankModel.addChineseSummary(alignResult.currentUnitId, transcript);
     }
 
-    // 5. Trigger timely interruption point if criteria matched
-    if (alignResult.isKeyInterruptionPoint && this.settingsModel.getSettings().showAIQuestionPrompts) {
-      const q = alignResult.recommendedQuestionId
-        ? this.debateModel.findQuestionById(alignResult.recommendedQuestionId)
-        : this.questionBankModel.findBestQuestionForText(transcript, this.contextEngine.getSide());
+    // 5. Dynamic AI Timing Judgment for Bench Interruption (交由 AI 實時動態裁定最佳提問時機)
+    if (this.settingsModel.getSettings().showAIQuestionPrompts) {
+      const candidateQuestions = this.debateModel.getQuestionsForSide(
+        this.contextEngine.getSide(),
+        this.contextEngine.getSeat()
+      );
 
-      if (q && this.onPopoutTrigger) {
-        this.onPopoutTrigger(q, `辯士陳述觸發爭點要件：${alignResult.activeSentence.slice(0, 45)}...`);
+      const decision = this.aiTimingJudge.evaluateInterruptionTiming({
+        spokenTranscript: transcript,
+        recentSentence: alignResult.activeSentence,
+        activeSectionTitle: this.roadmapModel.getActiveNode()?.title || '',
+        side: this.contextEngine.getSide(),
+        seat: this.contextEngine.getSeat(),
+        prepMeta: this.debateModel.getData().prep,
+        candidateQuestions,
+        sensitivity: this.settingsModel.getSettings().interruptionSensitivity,
+        elapsedSeconds: this.timerController.getState().elapsedSeconds
+      });
+
+      if (decision.shouldInterrupt && this.onPopoutTrigger) {
+        const questionToAsk = decision.recommendedQuestionId
+          ? this.debateModel.findQuestionById(decision.recommendedQuestionId)
+          : this.questionBankModel.findBestQuestionForText(transcript, this.contextEngine.getSide());
+
+        if (questionToAsk) {
+          this.onPopoutTrigger(questionToAsk, decision.rationale);
+        }
       }
     }
 

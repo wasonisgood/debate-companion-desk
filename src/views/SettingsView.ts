@@ -88,13 +88,22 @@ export class SettingsView {
 
           <!-- Section 2: Moot Rules & Timing -->
           <div class="card">
-            <div class="card-title">⏱ 模擬庭規則與自動計時</div>
+            <div class="card-title">⏱ 模擬庭規則、AI 動態提問時機與自動計時</div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.8rem;">
               <div>
                 <label style="display: block; font-size: 0.82rem; margin-bottom: 0.4rem;">辯方立場</label>
                 <div class="pills">
                   <button class="pill-item ${s.targetSide === 'prosecution' ? 'active' : ''}" id="btn-side-pros-set" type="button">簡方 (申請方)</button>
                   <button class="pill-item ${s.targetSide === 'defense' ? 'active' : ''}" id="btn-side-def-set" type="button">扁方 (被申請方)</button>
+                </div>
+              </div>
+
+              <div>
+                <label style="display: block; font-size: 0.82rem; margin-bottom: 0.4rem;">AI 最佳提問時機敏感度 (完全動態判斷不寫死)</label>
+                <div class="pills" id="sensitivity-pills">
+                  <button class="pill-item ${s.interruptionSensitivity === 'aggressive' ? 'active' : ''}" data-sens="aggressive" type="button">積極抗壓</button>
+                  <button class="pill-item ${s.interruptionSensitivity === 'balanced' ? 'active' : ''}" data-sens="balanced" type="button">標準攻防</button>
+                  <button class="pill-item ${s.interruptionSensitivity === 'conservative' ? 'active' : ''}" data-sens="conservative" type="button">沈著等待</button>
                 </div>
               </div>
 
@@ -135,6 +144,15 @@ export class SettingsView {
 
   private bindEvents(): void {
     let currentSide: Side = this.model.getSettings().targetSide;
+    let currentSensitivity = this.model.getSettings().interruptionSensitivity;
+
+    this.container.querySelectorAll('#sensitivity-pills button[data-sens]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentSensitivity = btn.getAttribute('data-sens') as any;
+        this.container.querySelectorAll('#sensitivity-pills button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
 
     this.container.querySelector('#btn-side-pros-set')?.addEventListener('click', () => {
       currentSide = 'prosecution';
@@ -171,6 +189,7 @@ export class SettingsView {
         enableAutoBells,
         enableAutoRecording,
         autoHidePopoutSec: popoutSec,
+        interruptionSensitivity: currentSensitivity,
         targetSide: currentSide
       };
 

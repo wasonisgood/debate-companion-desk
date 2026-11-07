@@ -27,8 +27,7 @@ export class AlignmentController {
         matchedWordsCount: 0,
         totalWordsCount: 0,
         activeSentence: '',
-        matchedFraction: 0,
-        isKeyInterruptionPoint: false
+        matchedFraction: 0
       };
     }
 
@@ -38,17 +37,17 @@ export class AlignmentController {
       .split(/\s+/)
       .filter(w => w.length > 0);
 
-    // Compute longest matching prefix / fuzzy sliding match
+    // Sequential prefix matching against unitWords
     let matchedCount = 0;
-    const spokenSet = new Set(spokenWords.slice(-15)); // focus on recent words
-
-    for (let i = 0; i < this.unitWords.length; i++) {
-      if (spokenSet.has(this.unitWords[i])) {
-        matchedCount = Math.max(matchedCount, i + 1);
+    let speechIdx = 0;
+    for (let i = 0; i < this.unitWords.length && speechIdx < spokenWords.length; i++) {
+      if (this.unitWords[i] === spokenWords[speechIdx]) {
+        matchedCount = i + 1;
+        speechIdx++;
       }
     }
 
-    // Fallback if direct match was low, estimate based on transcript length
+    // Fallback if direct sequential match was low, estimate based on transcript length
     if (matchedCount === 0 && spokenWords.length > 0) {
       matchedCount = Math.min(this.unitWords.length, spokenWords.length);
     }
@@ -64,36 +63,13 @@ export class AlignmentController {
     );
     const activeSentence = sentences[sentenceIndex] || '';
 
-    // Check if this position is a key legal assertion (ideal interruption point)
-    const lowerSentence = activeSentence.toLowerCase();
-    const lowerSpoken = spokenTranscript.toLowerCase();
-    const isKeyInterruptionPoint =
-      lowerSentence.includes('effective control') ||
-      lowerSentence.includes('self-defence') ||
-      lowerSentence.includes('article 8') ||
-      lowerSentence.includes('article 51') ||
-      lowerSentence.includes('proportionality') ||
-      lowerSentence.includes('bombardment') ||
-      lowerSentence.includes('humanitarian') ||
-      lowerSpoken.includes('effective control') ||
-      lowerSpoken.includes('self-defence') ||
-      lowerSpoken.includes('article 8') ||
-      lowerSpoken.includes('article 51') ||
-      lowerSpoken.includes('proportionality');
-
-    const recommendedQuestionId = this.activeUnit.qa && this.activeUnit.qa.length > 0
-      ? this.activeUnit.qa[0]
-      : undefined;
-
     return {
       currentUnitId: this.activeUnit.id,
       progressPercent,
       matchedWordsCount: matchedCount,
       totalWordsCount: this.unitWords.length,
       activeSentence,
-      matchedFraction,
-      isKeyInterruptionPoint,
-      recommendedQuestionId
+      matchedFraction
     };
   }
 }
