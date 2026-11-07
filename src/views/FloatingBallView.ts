@@ -1,9 +1,12 @@
+import { Icons } from './icons';
+
 export interface FloatingBallCallbacks {
   onExpandWindow: () => void;
   onToggleTimer: () => void;
   onTagCoachFeedback: () => void;
   onOpenSettings: () => void;
   onTriggerRandomQuestion: () => void;
+  onOpenTTSDrill: () => void;
 }
 
 export class FloatingBallView {
@@ -11,10 +14,14 @@ export class FloatingBallView {
   private callbacks: FloatingBallCallbacks;
   private isMenuOpen: boolean = false;
   private isDragging: boolean = false;
-  private dragStartX: number = 0;
-  private dragStartY: number = 0;
-  private posX: number = 24;
-  private posY: number = 24;
+  private startPointerX: number = 0;
+  private startPointerY: number = 0;
+  private startElemX: number = 0;
+  private startElemY: number = 0;
+  private hasMoved: boolean = false;
+
+  private currentRemainingSec: number = 900;
+  private isCurrentlyRecording: boolean = false;
 
   constructor(container: HTMLElement, callbacks: FloatingBallCallbacks) {
     this.container = container;
@@ -25,29 +32,41 @@ export class FloatingBallView {
   public render(): void {
     this.container.id = 'floating-ball-widget';
     this.container.innerHTML = `
-      <div class="floating-ball-inner">
-        <span class="floating-ball-icon" id="fb-icon">⚖</span>
+      <div class="floating-ball-inner" id="fb-trigger" title="點擊展開陪伴快捷功能，拖曳可自訂位置">
+        <span class="floating-ball-icon" id="fb-icon">
+          ${Icons.scales('', 20)}
+        </span>
         <span class="floating-ball-timer" id="fb-timer">15:00</span>
       </div>
 
       <div class="floating-quick-menu" id="fb-quick-menu">
-        <div style="font-size: 0.72rem; font-weight: bold; color: var(--ink-3); margin-bottom: 2px;">
-          陪伴台帳懸浮捷徑
+        <div class="quick-menu-header">
+          <span class="app-seal" style="width: 18px; height: 18px; font-size: 0.68rem;">辯</span>
+          <span>陪伴台帳懸浮捷徑</span>
         </div>
-        <button class="quick-menu-item" id="fb-action-expand">
-          <span>⤢</span> 展開主視窗
+        <button class="quick-menu-item" id="fb-action-expand" type="button">
+          ${Icons.expand('', 14)}
+          <span>展開主工作區</span>
         </button>
-        <button class="quick-menu-item" id="fb-action-timer">
-          <span>⏱</span> 暫停 / 繼續計時
+        <button class="quick-menu-item" id="fb-action-timer" type="button">
+          ${Icons.timer('', 14)}
+          <span>暫停 / 繼續計時</span>
         </button>
-        <button class="quick-menu-item" id="fb-action-feedback">
-          <span>🎙</span> 標記老師講評段落
+        <button class="quick-menu-item" id="fb-action-feedback" type="button">
+          ${Icons.tag('', 14)}
+          <span>標記老師講評段落</span>
         </button>
-        <button class="quick-menu-item" id="fb-action-question">
-          <span>⚡</span> 即時發起提問
+        <button class="quick-menu-item" id="fb-action-tts" type="button">
+          ${Icons.speaker('', 14)}
+          <span>發音朗讀小幫手</span>
         </button>
-        <button class="quick-menu-item" id="fb-action-settings">
-          <span>⚙</span> 快速偏好設定
+        <button class="quick-menu-item" id="fb-action-question" type="button">
+          ${Icons.zap('', 14)}
+          <span>即時提問提示</span>
+        </button>
+        <button class="quick-menu-item" id="fb-action-settings" type="button">
+          ${Icons.settings('', 14)}
+          <span>偏好設定</span>
         </button>
       </div>
     `;
@@ -56,6 +75,9 @@ export class FloatingBallView {
   }
 
   public updateState(remainingSec: number, isRecording: boolean, hasSync: boolean): void {
+    this.currentRemainingSec = remainingSec;
+    this.isCurrentlyRecording = isRecording;
+
     const mins = Math.floor(remainingSec / 60);
     const secs = remainingSec % 60;
     const clock = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
@@ -78,44 +100,60 @@ export class FloatingBallView {
   }
 
   private bindEvents(): void {
-    // Click or tap to toggle radial quick menu
-    this.container.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      if (target.closest('.quick-menu-item')) return;
+    const trigger = this.container.querySelector('#fb-trigger');
+    trigger?.addEventListener('click', (e) => {
+      if (this.hasMoved) return; // Prevent menu toggle if user was dragging
+      e.stopPropagation();
       this.toggleMenu();
     });
 
-    const menu = this.container.querySelector('#fb-quick-menu');
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (!this.container.contains(target)) {
+        this.closeMenu();
+      }
+    });
 
-    this.container.querySelector('#fb-action-expand')?.addEventListener('click', () => {
+    // Quick action buttons
+    this.container.querySelector('#fb-action-expand')?.addEventListener('click', (e) => {
+      e.stopPropagation();
       this.closeMenu();
       this.callbacks.onExpandWindow();
     });
 
-    this.container.querySelector('#fb-action-timer')?.addEventListener('click', () => {
+    this.container.querySelector('#fb-action-timer')?.addEventListener('click', (e) => {
+      e.stopPropagation();
       this.callbacks.onToggleTimer();
     });
 
-    this.container.querySelector('#fb-action-feedback')?.addEventListener('click', () => {
+    this.container.querySelector('#fb-action-feedback')?.addEventListener('click', (e) => {
+      e.stopPropagation();
       this.closeMenu();
       this.callbacks.onTagCoachFeedback();
     });
 
-    this.container.querySelector('#fb-action-question')?.addEventListener('click', () => {
+    this.container.querySelector('#fb-action-tts')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.closeMenu();
+      this.callbacks.onOpenTTSDrill();
+    });
+
+    this.container.querySelector('#fb-action-question')?.addEventListener('click', (e) => {
+      e.stopPropagation();
       this.closeMenu();
       this.callbacks.onTriggerRandomQuestion();
     });
 
-    this.container.querySelector('#fb-action-settings')?.addEventListener('click', () => {
+    this.container.querySelector('#fb-action-settings')?.addEventListener('click', (e) => {
+      e.stopPropagation();
       this.closeMenu();
       this.callbacks.onOpenSettings();
     });
 
-    // Touch & Mouse Dragging implementation
     this.setupDragging();
   }
 
-  private toggleMenu(): void {
+  public toggleMenu(): void {
     this.isMenuOpen = !this.isMenuOpen;
     const menu = this.container.querySelector('#fb-quick-menu');
     if (this.isMenuOpen) {
@@ -125,48 +163,73 @@ export class FloatingBallView {
     }
   }
 
-  private closeMenu(): void {
+  public closeMenu(): void {
     this.isMenuOpen = false;
     this.container.querySelector('#fb-quick-menu')?.classList.remove('open');
   }
 
   private setupDragging(): void {
-    const onStart = (clientX: number, clientY: number) => {
+    const trigger = this.container.querySelector('#fb-trigger') as HTMLElement;
+    if (!trigger) return;
+
+    const onPointerDown = (clientX: number, clientY: number) => {
       this.isDragging = true;
-      this.dragStartX = clientX - this.container.offsetLeft;
-      this.dragStartY = clientY - this.container.offsetTop;
+      this.hasMoved = false;
+      this.startPointerX = clientX;
+      this.startPointerY = clientY;
+
+      const rect = this.container.getBoundingClientRect();
+      this.startElemX = rect.left;
+      this.startElemY = rect.top;
     };
 
-    const onMove = (clientX: number, clientY: number) => {
+    const onPointerMove = (clientX: number, clientY: number) => {
       if (!this.isDragging) return;
-      const left = clientX - this.dragStartX;
-      const top = clientY - this.dragStartY;
-      this.container.style.left = `${left}px`;
-      this.container.style.top = `${top}px`;
-      this.container.style.bottom = 'auto';
-      this.container.style.right = 'auto';
+      const dx = clientX - this.startPointerX;
+      const dy = clientY - this.startPointerY;
+
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+        this.hasMoved = true;
+      }
+
+      if (this.hasMoved) {
+        const nextX = Math.max(12, Math.min(window.innerWidth - 72, this.startElemX + dx));
+        const nextY = Math.max(48, Math.min(window.innerHeight - 72, this.startElemY + dy));
+
+        this.container.style.left = `${nextX}px`;
+        this.container.style.top = `${nextY}px`;
+        this.container.style.bottom = 'auto';
+        this.container.style.right = 'auto';
+      }
     };
 
-    const onEnd = () => {
+    const onPointerUp = () => {
       this.isDragging = false;
     };
 
-    this.container.addEventListener('mousedown', (e) => onStart(e.clientX, e.clientY));
-    window.addEventListener('mousemove', (e) => onMove(e.clientX, e.clientY));
-    window.addEventListener('mouseup', onEnd);
+    trigger.addEventListener('mousedown', (e) => {
+      if (e.button === 0) onPointerDown(e.clientX, e.clientY);
+    });
 
-    this.container.addEventListener('touchstart', (e) => {
+    window.addEventListener('mousemove', (e) => {
+      onPointerMove(e.clientX, e.clientY);
+    });
+
+    window.addEventListener('mouseup', onPointerUp);
+
+    // Touch support
+    trigger.addEventListener('touchstart', (e) => {
       if (e.touches.length === 1) {
-        onStart(e.touches[0].clientX, e.touches[0].clientY);
+        onPointerDown(e.touches[0].clientX, e.touches[0].clientY);
       }
     }, { passive: true });
 
     window.addEventListener('touchmove', (e) => {
-      if (e.touches.length === 1) {
-        onMove(e.touches[0].clientX, e.touches[0].clientY);
+      if (e.touches.length === 1 && this.isDragging) {
+        onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
       }
     }, { passive: true });
 
-    window.addEventListener('touchend', onEnd);
+    window.addEventListener('touchend', onPointerUp);
   }
 }

@@ -68,7 +68,7 @@ function Compile($out, $sources, $extra) {
 }
 
 # 4. Compile Uninstaller
-Compile "$scriptDir\uninstall.exe" @("$scriptDir\UninstallerApp.cs") @()
+Compile "$scriptDir\uninstall.exe" (@("$scriptDir\UninstallerApp.cs") + $common) @()
 
 # 5. Compile Updater
 Compile "$scriptDir\DebateCompanionUpdater.exe" (@("$scriptDir\UpdaterApp.cs") + $common) @()

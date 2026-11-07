@@ -1,4 +1,5 @@
 import { TTSController, LEGAL_LATIN_GLOSSARY, type PronunciationGloss } from '../controllers/TTSController';
+import { Icons } from './icons';
 
 export interface TTSDrillCallbacks {
   onConfirmAsk: (text: string) => void;
@@ -20,7 +21,7 @@ export class TTSDrillModalView {
   }
 
   public open(text: string): void {
-    this.currentText = text;
+    this.currentText = text || 'Mr. President, Members of the Court, may it please the Court.';
     this.practiceCount = 0;
     this.render();
     this.container.style.display = 'flex';
@@ -36,17 +37,20 @@ export class TTSDrillModalView {
     const glosses = this.ttsController.getGlossaryForText(this.currentText);
 
     this.container.innerHTML = `
-      <div class="modal-backdrop" style="position: fixed; inset: 0; background: rgba(29, 27, 23, 0.6); backdrop-filter: blur(4px); z-index: 10001; display: flex; align-items: center; justify-content: center; padding: 1rem;">
-        <div class="modal-card card" style="width: 540px; max-width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); background: var(--paper);">
-          <div class="card-header">
-            <div class="card-title">
-              <span>🔊 研究員發音練習朗讀小幫手</span>
+      <div class="modal-backdrop" style="position: fixed; inset: 0; background: rgba(29, 27, 23, 0.65); backdrop-filter: blur(4px); z-index: 10001; display: flex; align-items: center; justify-content: center; padding: 1rem;">
+        <div class="modal-card card" style="width: 560px; max-width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); background: var(--paper); border: 1px solid var(--rule); padding: 1.5rem;">
+          <div class="card-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.8rem; border-bottom: 1px solid var(--rule); padding-bottom: 0.5rem;">
+            <div class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
+              <span class="app-seal" style="width: 22px; height: 22px; font-size: 0.75rem;">辯</span>
+              <h3 style="margin: 0; font-size: 1.05rem; color: var(--ink);">研究員發音練習朗讀小幫手</h3>
             </div>
-            <button class="btn btn-outline" id="btn-modal-close" style="min-height: 28px; padding: 0.2rem 0.5rem;" type="button">✕</button>
+            <button class="win-control-btn close" id="btn-modal-close" style="width: 28px; height: 28px;" type="button">
+              ${Icons.close('', 14)}
+            </button>
           </div>
 
-          <div style="font-size: 0.85rem; color: var(--ink-2); margin-bottom: 0.8rem; line-height: 1.5;">
-            在向辯士提問前，您可以先點擊朗讀聆聽法官標準語調與重音節奏，或自行跟讀練習：
+          <div style="font-size: 0.86rem; color: var(--ink-2); margin-bottom: 0.8rem; line-height: 1.5;">
+            在向辯士提問前，您可以點擊朗讀聆聽法官標準語調與重音節奏，或自行跟讀練習：
           </div>
 
           <div class="card" style="background: var(--paper-2); border-left: 4px solid var(--shu); padding: 1rem; margin-bottom: 1rem;">
@@ -59,7 +63,7 @@ export class TTSDrillModalView {
           ${glosses.length > 0 ? `
             <div style="margin-bottom: 1rem;">
               <div style="font-size: 0.78rem; font-weight: bold; color: var(--shu-ink); margin-bottom: 0.4rem;">
-                📌 本題關鍵拉丁法學專有名詞讀音解析：
+                關鍵拉丁法學專有名詞讀音解析：
               </div>
               <div style="display: flex; flex-direction: column; gap: 0.4rem;">
                 ${glosses.map(g => `
@@ -87,11 +91,13 @@ export class TTSDrillModalView {
           </div>
 
           <div style="display: flex; gap: 0.8rem;">
-            <button class="btn btn-outline btn-touch" id="btn-play-tts" style="flex: 1;">
-              ▶ 播放朗讀示範
+            <button class="btn btn-outline btn-touch" id="btn-play-tts" style="flex: 1;" type="button">
+              ${Icons.speaker('', 15)}
+              <span>播放示範朗讀</span>
             </button>
-            <button class="btn btn-primary btn-touch" id="btn-confirm-ask" style="flex: 1;">
-              ✓ 我已熟練，立即提問
+            <button class="btn btn-primary btn-touch" id="btn-confirm-ask" style="flex: 1;" type="button">
+              ${Icons.check('', 15)}
+              <span>已熟練，立即提問</span>
             </button>
           </div>
         </div>
@@ -104,23 +110,25 @@ export class TTSDrillModalView {
   private bindEvents(): void {
     this.container.querySelector('#btn-modal-close')?.addEventListener('click', () => this.close());
 
-    // Rate switcher
-    this.container.querySelectorAll('.pill-item[data-rate]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const rate = parseFloat(btn.getAttribute('data-rate') || '1.0');
-        this.currentRate = rate;
-        this.container.querySelectorAll('.pill-item[data-rate]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
+    // Speed toggle
+    const pills = this.container.querySelectorAll('.pill-item');
+    pills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        pills.forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        this.currentRate = parseFloat(pill.getAttribute('data-rate') || '1.0');
       });
     });
 
+    // Play TTS
     this.container.querySelector('#btn-play-tts')?.addEventListener('click', () => {
+      this.ttsController.speak(this.currentText, this.currentRate);
       this.practiceCount++;
       const counter = this.container.querySelector('#practice-counter');
       if (counter) counter.textContent = `已練習 ${this.practiceCount} 次`;
-      this.ttsController.speak(this.currentText, this.currentRate);
     });
 
+    // Confirm ask
     this.container.querySelector('#btn-confirm-ask')?.addEventListener('click', () => {
       this.callbacks.onConfirmAsk(this.currentText);
       this.close();

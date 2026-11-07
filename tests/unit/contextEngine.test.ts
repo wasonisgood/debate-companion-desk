@@ -12,7 +12,7 @@ describe('ContextEngineModel', () => {
 
     const prompt = engine.buildPromptContext('The paramilitary attacked at dawn', 'Opening Submissions');
 
-    assert.ok(prompt.includes('Applicant (簡方 / 申請方)'));
+    assert.ok(prompt.includes('Applicant (正方 / 申請方)'));
     assert.ok(prompt.includes('Breach of Art 2(4)'));
     assert.ok(prompt.includes('Art 51 Self-defence'));
     assert.ok(prompt.includes('Armed attack on oil platform'));
@@ -24,6 +24,6 @@ describe('ContextEngineModel', () => {
 
     assert.equal(engine.getSide(), 'defense');
     const prompt = engine.buildPromptContext('We acted under necessity', 'Plea on Merits');
-    assert.ok(prompt.includes('Respondent (扁方 / 被申請方)'));
+    assert.ok(prompt.includes('Respondent (反方 / 被申請方)'));
   });
 });

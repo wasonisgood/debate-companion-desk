@@ -1,4 +1,5 @@
 import type { BenchQuestion } from '../types';
+import { Icons } from './icons';
 
 export interface PopoutHudCallbacks {
   onPracticeTTS: (text: string) => void;
@@ -61,27 +62,35 @@ export class PopoutHudView {
     inner.innerHTML = `
       <div class="hud-header">
         <div class="hud-title-wrap">
-          <span class="badge badge-shu">⚡ 即時提問時機點</span>
-          <span style="font-size: 0.82rem; font-weight: bold; color: var(--ink);">${q.id}</span>
+          <span class="badge badge-shu">
+            ${Icons.zap('', 12)}
+            <span>即時提問時機點</span>
+          </span>
+          <span style="font-size: 0.82rem; font-weight: bold; color: var(--ink); font-family: var(--mono);">${q.id}</span>
         </div>
-        <button class="hud-dismiss-btn" id="btn-hud-close" title="收起">✕</button>
+        <button class="hud-dismiss-btn" id="btn-hud-close" title="收起" type="button">
+          ${Icons.close('', 14)}
+        </button>
       </div>
 
       <div class="hud-body">
-        <div class="hud-rationale">🎯 觸發契機：${rationale}</div>
+        <div class="hud-rationale">觸發契機：${rationale}</div>
         <div class="hud-question-en">"${q.questionEn}"</div>
         <div class="hud-question-zh">${q.questionZh}</div>
       </div>
 
       <div class="hud-actions">
-        <button class="btn btn-primary btn-touch" id="btn-hud-tts" style="flex: 1;">
-          🔊 朗讀給我聽
+        <button class="btn btn-primary btn-touch" id="btn-hud-tts" style="flex: 1;" type="button">
+          ${Icons.speaker('', 14)}
+          <span>朗讀發音</span>
         </button>
-        <button class="btn btn-outline btn-touch" id="btn-hud-followup" title="動態追問">
-          ⚡ 追問
+        <button class="btn btn-outline btn-touch" id="btn-hud-followup" title="動態追問" type="button">
+          ${Icons.zap('', 14)}
+          <span>追問</span>
         </button>
-        <button class="btn btn-touch" id="btn-hud-ask" style="background: var(--ainezu); color: #fff;">
-          ✓ 提問辯士
+        <button class="btn btn-touch" id="btn-hud-ask" style="background: var(--ainezu); color: #fff;" type="button">
+          ${Icons.check('', 14)}
+          <span>提問辯士</span>
         </button>
       </div>
     `;
@@ -117,24 +126,19 @@ export class PopoutHudView {
   private startCountdown(): void {
     this.clearTimers();
     this.countdownProgress = 100;
-    this.isPaused = false;
-
-    const totalMs = this.timeoutSec * 1000;
-    const intervalMs = 100;
-    const step = (intervalMs / totalMs) * 100;
-
-    const fill = this.container.querySelector('#hud-fill') as HTMLElement;
+    const intervalMs = 50;
+    const totalSteps = (this.timeoutSec * 1000) / intervalMs;
+    const stepDec = 100 / totalSteps;
 
     this.countdownInterval = setInterval(() => {
-      if (this.isPaused) return;
+      if (!this.isPaused) {
+        this.countdownProgress -= stepDec;
+        const fill = this.container.querySelector('#hud-fill') as HTMLElement;
+        if (fill) fill.style.width = `${Math.max(0, this.countdownProgress)}%`;
 
-      this.countdownProgress -= step;
-      if (fill) {
-        fill.style.width = `${Math.max(0, this.countdownProgress)}%`;
-      }
-
-      if (this.countdownProgress <= 0) {
-        this.hide();
+        if (this.countdownProgress <= 0) {
+          this.hide();
+        }
       }
     }, intervalMs);
   }
@@ -143,6 +147,10 @@ export class PopoutHudView {
     if (this.countdownInterval) {
       clearInterval(this.countdownInterval);
       this.countdownInterval = null;
+    }
+    if (this.autoHideTimer) {
+      clearTimeout(this.autoHideTimer);
+      this.autoHideTimer = null;
     }
   }
 }

@@ -17,40 +17,26 @@ namespace DebateCompanion {
         protected override void OnStartup(StartupEventArgs e) {
             base.OnStartup(e);
 
-            var win = new Window {
-                Title = "模擬庭提問陪伴台帳 · 安裝精靈",
-                Width = 520,
-                Height = 360,
-                WindowStartupLocation = WindowStartupLocation.CenterScreen,
-                Background = new SolidColorBrush(Color.FromRgb(0xF1, 0xEC, 0xE2)),
-                ResizeMode = ResizeMode.NoResize
-            };
+            StackPanel body;
+            StackPanel btnPanel;
+            var win = UpdateCommon.CreateWindowShell("模擬庭提問陪伴台帳 · 安裝精靈", 520, 340, out body, out btnPanel);
 
-            var root = new Grid { Margin = new Thickness(24) };
-            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-            // Title
             var title = new TextBlock {
-                Text = "模擬庭提問陪伴台帳 安裝程式",
-                FontSize = 18,
+                Text = "安裝 模擬庭提問陪伴台帳",
+                FontSize = 16,
                 FontWeight = FontWeights.Bold,
-                Foreground = new SolidColorBrush(Color.FromRgb(0x1D, 0x1B, 0x17)),
-                Margin = new Thickness(0, 0, 0, 12)
+                Foreground = new SolidColorBrush(UpdateCommon.ColorInk),
+                Margin = new Thickness(0, 0, 0, 8)
             };
-            Grid.SetRow(title, 0);
-            root.Children.Add(title);
+            body.Children.Add(title);
 
-            // Body
-            var body = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             var desc = new TextBlock {
-                Text = "即將安裝陪伴辯士練習之研究員提問助手與智慧計時系統至您的電腦。\n將自動建立桌面捷徑與 Windows 快速通訊協定 (debate-companion://)。",
-                FontSize = 13,
-                LineHeight = 22,
-                Foreground = new SolidColorBrush(Color.FromRgb(0x4C, 0x48, 0x40)),
+                Text = "即將安裝陪伴辯士練習之研究員提問助手與智慧計時系統至您的電腦。\n將自動建立桌面捷徑與 Windows 快速通訊協定 (debate-companion://)，並支援與 wason.dev 網站即時雲端雙向同步。",
+                FontSize = 12.5,
+                LineHeight = 20,
+                Foreground = new SolidColorBrush(UpdateCommon.ColorInk2),
                 TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 0, 0, 16)
+                Margin = new Thickness(0, 0, 0, 14)
             };
             body.Children.Add(desc);
 
@@ -60,42 +46,26 @@ namespace DebateCompanion {
                 Value = 0,
                 Maximum = 100,
                 Visibility = Visibility.Collapsed,
-                Margin = new Thickness(0, 0, 0, 12)
+                Margin = new Thickness(0, 0, 0, 10),
+                Foreground = new SolidColorBrush(UpdateCommon.ColorShu),
+                Background = new SolidColorBrush(UpdateCommon.ColorPaper3),
+                BorderBrush = new SolidColorBrush(UpdateCommon.ColorRule),
+                BorderThickness = new Thickness(1)
             };
             body.Children.Add(progress);
 
             var status = new TextBlock {
                 Text = "準備就緒，請點擊下方「開始安裝」按鈕。",
-                FontSize = 12,
-                Foreground = new SolidColorBrush(Color.FromRgb(0x85, 0x7F, 0x73))
+                FontSize = 11.5,
+                Foreground = new SolidColorBrush(UpdateCommon.ColorInk3)
             };
             body.Children.Add(status);
 
-            Grid.SetRow(body, 1);
-            root.Children.Add(body);
-
             // Buttons
-            var btnPanel = new StackPanel {
-                Orientation = Orientation.Horizontal,
-                HorizontalAlignment = HorizontalAlignment.Right
-            };
-            var btnCancel = new Button {
-                Content = "取消",
-                Width = 90,
-                Height = 34,
-                Margin = new Thickness(0, 0, 8, 0),
-                Background = new SolidColorBrush(Color.FromRgb(0xE7, 0xE0, 0xD2))
-            };
+            var btnCancel = UpdateCommon.CreateStyledButton("取消", false, 80, 32);
             btnCancel.Click += (s, ev) => win.Close();
 
-            var btnInstall = new Button {
-                Content = "開始安裝",
-                Width = 110,
-                Height = 34,
-                Background = new SolidColorBrush(Color.FromRgb(0xB9, 0x47, 0x2B)),
-                Foreground = Brushes.White,
-                FontWeight = FontWeights.Bold
-            };
+            var btnInstall = UpdateCommon.CreateStyledButton("開始安裝", true, 110, 32);
 
             btnInstall.Click += (s, ev) => {
                 btnInstall.IsEnabled = false;
@@ -106,7 +76,7 @@ namespace DebateCompanion {
 
                 try {
                     InstallPayload();
-                    status.Text = "安裝成功完成！";
+                    status.Text = "安裝成功完成！捷徑與協定已就緒。";
                     progress.IsIndeterminate = false;
                     progress.Value = 100;
                     btnInstall.Content = "啟動陪伴台帳";
@@ -124,10 +94,7 @@ namespace DebateCompanion {
 
             btnPanel.Children.Add(btnCancel);
             btnPanel.Children.Add(btnInstall);
-            Grid.SetRow(btnPanel, 2);
-            root.Children.Add(btnPanel);
 
-            win.Content = root;
             win.ShowDialog();
         }
 
@@ -159,6 +126,16 @@ namespace DebateCompanion {
                 if (s != null) {
                     string uPath = Path.Combine(installDir, "uninstall.exe");
                     using (var fs = File.Create(uPath)) {
+                        s.CopyTo(fs);
+                    }
+                }
+            }
+
+            // Extract updater
+            using (var s = asm.GetManifestResourceStream("DebateCompanionUpdater.exe")) {
+                if (s != null) {
+                    string upPath = Path.Combine(installDir, "DebateCompanionUpdater.exe");
+                    using (var fs = File.Create(upPath)) {
                         s.CopyTo(fs);
                     }
                 }

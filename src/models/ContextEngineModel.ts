@@ -54,7 +54,7 @@ export class ContextEngineModel {
    */
   public buildPromptContext(spokenTranscript: string, activeSection: string): string {
     const isApplicant = this.currentSide === 'prosecution';
-    const sideLabel = isApplicant ? 'Applicant (簡方 / 申請方)' : 'Respondent (扁方 / 被申請方)';
+    const sideLabel = isApplicant ? 'Applicant (正方 / 申請方)' : 'Respondent (反方 / 被申請方)';
     const opponentLabel = isApplicant ? 'Respondent (被申請方)' : 'Applicant (申請方)';
 
     const ourMemorial = isApplicant

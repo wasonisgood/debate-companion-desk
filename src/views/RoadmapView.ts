@@ -1,5 +1,6 @@
 import type { RoadmapNode } from '../types';
 import { ArgumentRoadmapModel } from '../models/ArgumentRoadmapModel';
+import { Icons } from './icons';
 
 export interface RoadmapViewCallbacks {
   onSelectNode: (nodeId: string) => void;
@@ -30,7 +31,8 @@ export class RoadmapView {
       <div class="col-roadmap">
         <div class="panel-header">
           <div class="panel-title">
-            <span>🗺 辯論爭點架構圖</span>
+            <span class="panel-icon">${Icons.scales('', 16)}</span>
+            <span>辯論爭點架構圖</span>
             <span class="badge badge-ainezu">${progress}%</span>
           </div>
           <span class="badge">${nodes.length} 個論點階段</span>
@@ -40,7 +42,7 @@ export class RoadmapView {
           ${nodes.map((node, idx) => `
             <div class="roadmap-node ${node.status}" data-node-id="${node.id}">
               <div class="node-header">
-                <span class="node-tag">節點 ${idx + 1} · ${node.speaker}</span>
+                <span class="node-tag">階段 ${idx + 1} · ${node.speaker}</span>
                 <span class="badge ${this.statusBadgeClass(node.status)}">${this.statusLabel(node.status)}</span>
               </div>
               <div class="node-title">${node.title}</div>
@@ -48,8 +50,8 @@ export class RoadmapView {
 
               <div class="node-meta">
                 ${node.questionIds.map(qid => `
-                  <span class="node-pill-question has-pending" title="關聯題目">
-                    ❓ ${qid}
+                  <span class="node-pill-question has-pending" title="關聯問題編號">
+                    <span style="opacity: 0.7;">Q:</span> ${qid}
                   </span>
                 `).join('')}
               </div>
@@ -86,9 +88,9 @@ export class RoadmapView {
 
   private statusLabel(status: string): string {
     switch (status) {
-      case 'active': return '● 朗讀進行中';
-      case 'completed': return '✓ 已完成';
-      case 'interrupted': return '⚡ 提問中斷點';
+      case 'active': return '朗讀進行中';
+      case 'completed': return '已完成';
+      case 'interrupted': return '提問中斷點';
       default: return '等待中';
     }
   }

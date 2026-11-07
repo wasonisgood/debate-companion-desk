@@ -1,32 +1,33 @@
-/* Floating Ball (懸浮球) Widget Styles */
+/* Floating Ball (懸浮球) Widget & Mini HUD Styles */
 
 #floating-ball-widget {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  width: 58px;
-  height: 58px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   background: var(--paper);
   border: 2px solid var(--rule);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 4px 16px rgba(29, 27, 23, 0.16);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: grab;
   z-index: 9999;
-  transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.1, 1), box-shadow 0.2s ease;
+  transition: transform 0.18s cubic-bezier(0.2, 0.7, 0.1, 1), box-shadow 0.2s ease, border-color 0.2s ease;
   touch-action: none;
+  user-select: none;
 }
 
 #floating-ball-widget:active {
   cursor: grabbing;
-  transform: scale(0.95);
+  transform: scale(0.96);
 }
 
 #floating-ball-widget.recording {
   border-color: var(--shu);
-  box-shadow: 0 0 16px rgba(185, 71, 43, 0.35);
+  box-shadow: 0 0 16px rgba(185, 71, 43, 0.4);
 }
 
 #floating-ball-widget.alert-trigger {
@@ -36,7 +37,7 @@
 
 @keyframes bounceAlert {
   0% { transform: scale(1); }
-  100% { transform: scale(1.12); }
+  100% { transform: scale(1.1); }
 }
 
 .floating-ball-inner {
@@ -45,10 +46,16 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
 }
 
 .floating-ball-icon {
-  font-size: 1.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--shu-ink);
   line-height: 1;
 }
 
@@ -57,6 +64,7 @@
   font-size: 0.65rem;
   font-weight: bold;
   color: var(--ink-2);
+  line-height: 1;
 }
 
 /* Quick Radial Action Menu attached to floating ball */
@@ -66,13 +74,26 @@
   right: 0;
   background: var(--paper);
   border: 1px solid var(--rule);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
   padding: 0.5rem;
   display: none;
   flex-direction: column;
+  gap: 0.35rem;
+  min-width: 190px;
+  z-index: 10000;
+}
+
+.quick-menu-header {
+  font-size: 0.74rem;
+  font-weight: bold;
+  color: var(--ink-3);
+  padding: 0.2rem 0.4rem;
+  display: flex;
+  align-items: center;
   gap: 0.4rem;
-  min-width: 180px;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 0.2rem;
 }
 
 .floating-quick-menu.open {
@@ -80,18 +101,26 @@
   animation: popIn 0.15s ease-out;
 }
 
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.92) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
 .quick-menu-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  gap: 0.55rem;
+  padding: 0.45rem 0.7rem;
   background: var(--paper-2);
   border: 1px solid transparent;
   border-radius: var(--radius);
   font-size: 0.82rem;
+  font-family: var(--serif);
   cursor: pointer;
   color: var(--ink);
   transition: all 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .quick-menu-item:hover {
@@ -100,7 +129,130 @@
   color: var(--shu);
 }
 
-@keyframes popIn {
-  from { opacity: 0; transform: scale(0.9) translateY(10px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+/* Mini HUD (Shown when window is switched to floating mode) */
+#floating-mini-hud-container {
+  display: none;
+  width: 100vw;
+  height: 100vh;
+  box-sizing: border-box;
+  background: var(--paper);
+}
+
+.floating-mode #floating-mini-hud-container {
+  display: flex;
+}
+
+.floating-mode #workspace-container,
+.floating-mode #custom-titlebar,
+.floating-mode #floating-ball-widget {
+  display: none !important;
+}
+
+.mini-hud-card {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.mini-hud-header {
+  height: 36px;
+  background: var(--paper-2);
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.6rem;
+}
+
+.mini-hud-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-hud-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.mini-hud-body {
+  flex: 1;
+  padding: 0.65rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+}
+
+.mini-hud-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mini-hud-timer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.6rem;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-full);
+  font-size: 0.84rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.mini-hud-timer-badge:hover {
+  background: var(--paper-3);
+  border-color: var(--shu);
+}
+
+.mini-hud-prompt-box {
+  background: var(--paper-2);
+  border-left: 3px solid var(--shu);
+  padding: 0.5rem 0.65rem;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.mini-hud-q-en {
+  font-family: var(--latin);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.mini-hud-q-zh {
+  font-size: 0.78rem;
+  color: var(--ink-2);
+  line-height: 1.35;
+}
+
+.mini-hud-actions {
+  padding: 0.5rem 0.7rem;
+  background: var(--paper-2);
+  border-top: 1px solid var(--rule);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.mini-hud-actions .btn {
+  flex: 1;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.5rem;
+  min-height: 32px;
+  gap: 0.3rem;
 }

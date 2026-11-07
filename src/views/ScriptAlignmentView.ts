@@ -1,4 +1,5 @@
 import type { OralUnit, LiveChineseSummary } from '../types';
+import { Icons } from './icons';
 
 export interface ScriptAlignmentCallbacks {
   onInterruptionTriggerClick: () => void;
@@ -52,12 +53,13 @@ export class ScriptAlignmentView {
         <div class="card" style="flex: 1;">
           <div class="card-header">
             <div class="card-title">
-              <span>🎙 口說稿即時對照追蹤</span>
+              <span class="panel-icon">${Icons.mic('', 16)}</span>
+              <span>口說稿即時對照追蹤</span>
               <span class="badge badge-shu">${this.currentUnit.section}</span>
             </div>
             <div class="pills">
               <span class="pill-item active">${this.currentUnit.speaker}</span>
-              <span class="pill-item">${this.currentUnit.side === 'prosecution' ? '簡方' : '扁方'}</span>
+              <span class="pill-item">${this.currentUnit.side === 'prosecution' ? '正方 (申請方)' : '反方 (被申請方)'}</span>
             </div>
           </div>
 
@@ -68,7 +70,8 @@ export class ScriptAlignmentView {
         <div class="card" style="height: 240px;">
           <div class="card-header">
             <div class="card-title">
-              <span>随念隨摘 · 即時中文摘要</span>
+              <span class="panel-icon">${Icons.zap('', 16)}</span>
+              <span>隨念隨摘 · 即時中文摘要</span>
               <span class="badge badge-koke" id="summary-counter">${this.summaries.length} 條摘要</span>
             </div>
             <span style="font-size: 0.75rem; color: var(--ink-3);">依即時口說流動生成</span>

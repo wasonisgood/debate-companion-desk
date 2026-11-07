@@ -1,11 +1,19 @@
+import { Icons } from './icons';
+
 export interface TitleBarCallbacks {
   onMinimize: () => void;
   onMaximize: () => void;
   onClose: () => void;
   onToggleFloatMode: () => void;
   onOpenSettings: () => void;
+  onOpenAuth: () => void;
+  onCheckUpdates: () => void;
+  onTTSDrill: () => void;
+  onManualCoachFeedback: () => void;
   onSwitchSide: (side: 'prosecution' | 'defense') => void;
   onStartSimulation: () => void;
+  onExportRecord: () => void;
+  onNewRound: () => void;
 }
 
 export class CustomTitleBarView {
@@ -25,7 +33,7 @@ export class CustomTitleBarView {
         <div class="titlebar-left">
           <div class="app-branding">
             <span class="app-seal">辯</span>
-            <span>模擬庭提問陪伴台帳</span>
+            <span class="branding-title">模擬庭提問陪伴台帳</span>
           </div>
 
           <nav class="custom-menu-bar">
@@ -44,8 +52,8 @@ export class CustomTitleBarView {
             <div class="custom-menu-item" data-menu="mode">
               <button class="custom-menu-btn" type="button">辯方</button>
               <div class="custom-dropdown-list">
-                <button class="dropdown-action-btn" id="menu-side-pros">切換為 簡方 (申請方)</button>
-                <button class="dropdown-action-btn" id="menu-side-def">切換為 扁方 (被申請方)</button>
+                <button class="dropdown-action-btn" id="menu-side-pros">切換為 正方 (申請方)</button>
+                <button class="dropdown-action-btn" id="menu-side-def">切換為 反方 (被申請方)</button>
               </div>
             </div>
 
@@ -53,10 +61,25 @@ export class CustomTitleBarView {
             <div class="custom-menu-item" data-menu="tools">
               <button class="custom-menu-btn" type="button">工具</button>
               <div class="custom-dropdown-list">
-                <button class="dropdown-action-btn" id="menu-sim-speech">模擬辯士朗讀口說</button>
-                <button class="dropdown-action-btn" id="menu-tts-drill">發音朗讀小幫手</button>
-                <button class="dropdown-action-btn" id="menu-split-feedback">手動標註老師講評</button>
+                <button class="dropdown-action-btn" id="menu-tts-drill">
+                  <span>${Icons.speaker('', 14)} 發音朗讀小幫手</span>
+                </button>
+                <button class="dropdown-action-btn" id="menu-split-feedback">
+                  <span>${Icons.tag('', 14)} 手動標註老師講評</span>
+                </button>
+                <button class="dropdown-action-btn" id="menu-sim-speech">
+                  <span>${Icons.play('', 14)} 模擬辯士朗讀口說</span>
+                </button>
+                <div class="dropdown-divider"></div>
+                <button class="dropdown-action-btn" id="menu-check-updates">
+                  <span>${Icons.refresh('', 14)} 檢查更新與熱修復</span>
+                </button>
               </div>
+            </div>
+
+            <!-- 授權與帳號 Menu -->
+            <div class="custom-menu-item" data-menu="auth">
+              <button class="custom-menu-btn" id="menu-open-auth" type="button">網站授權</button>
             </div>
 
             <!-- 設定 Menu -->
@@ -67,18 +90,33 @@ export class CustomTitleBarView {
         </div>
 
         <div class="titlebar-center">
-          <span class="badge-status" id="tb-timer-badge">⏱ 15:00</span>
-          <span class="badge-status rec" id="tb-rec-badge" style="display: none;">
-            <span class="badge-status rec-dot"></span> 錄音中
+          <span class="badge-status" id="tb-timer-badge">
+            ${Icons.timer('', 13)}
+            <span id="tb-timer-text">15:00</span>
           </span>
-          <span class="badge-status sync-ok" id="tb-sync-badge">☁ 雲端同步已就緒</span>
+          <span class="badge-status rec" id="tb-rec-badge" style="display: none;">
+            <span class="badge-status rec-dot"></span>
+            <span>錄音中</span>
+          </span>
+          <span class="badge-status sync-ok" id="tb-sync-badge">
+            ${Icons.cloudCheck('', 13)}
+            <span id="tb-sync-text">雲端資料庫已就緒</span>
+          </span>
         </div>
 
         <div class="titlebar-right">
-          <button class="win-control-btn float-toggle" id="btn-win-float" title="切換懸浮球微型視窗" type="button">⧉</button>
-          <button class="win-control-btn" id="btn-win-min" title="最小化" type="button">—</button>
-          <button class="win-control-btn" id="btn-win-max" title="最大化" type="button">□</button>
-          <button class="win-control-btn close" id="btn-win-close" title="關閉" type="button">✕</button>
+          <button class="win-control-btn float-toggle" id="btn-win-float" title="切換懸浮球微型視窗" type="button">
+            ${Icons.floatWindow('', 14)}
+          </button>
+          <button class="win-control-btn" id="btn-win-min" title="最小化" type="button">
+            ${Icons.min('', 14)}
+          </button>
+          <button class="win-control-btn" id="btn-win-max" title="最大化" type="button">
+            ${Icons.max('', 14)}
+          </button>
+          <button class="win-control-btn close" id="btn-win-close" title="關閉" type="button">
+            ${Icons.close('', 14)}
+          </button>
         </div>
       </div>
     `;
@@ -120,20 +158,31 @@ export class CustomTitleBarView {
     });
 
     // Menu actions
+    this.container.querySelector('#menu-new-prep')?.addEventListener('click', () => this.callbacks.onNewRound());
+    this.container.querySelector('#menu-export-record')?.addEventListener('click', () => this.callbacks.onExportRecord());
+    this.container.querySelector('#menu-exit')?.addEventListener('click', () => this.callbacks.onClose());
+
     this.container.querySelector('#menu-side-pros')?.addEventListener('click', () => this.callbacks.onSwitchSide('prosecution'));
     this.container.querySelector('#menu-side-def')?.addEventListener('click', () => this.callbacks.onSwitchSide('defense'));
+
+    // Tools
+    this.container.querySelector('#menu-tts-drill')?.addEventListener('click', () => this.callbacks.onTTSDrill());
+    this.container.querySelector('#menu-split-feedback')?.addEventListener('click', () => this.callbacks.onManualCoachFeedback());
     this.container.querySelector('#menu-sim-speech')?.addEventListener('click', () => this.callbacks.onStartSimulation());
+    this.container.querySelector('#menu-check-updates')?.addEventListener('click', () => this.callbacks.onCheckUpdates());
+
+    // Auth & Settings
+    this.container.querySelector('#menu-open-auth')?.addEventListener('click', () => this.callbacks.onOpenAuth());
     this.container.querySelector('#menu-open-settings')?.addEventListener('click', () => this.callbacks.onOpenSettings());
-    this.container.querySelector('#menu-exit')?.addEventListener('click', () => this.callbacks.onClose());
   }
 
   public updateTimerDisplay(remainingSec: number, isRunning: boolean): void {
+    const textEl = this.container.querySelector('#tb-timer-text');
     const badge = this.container.querySelector('#tb-timer-badge');
-    if (!badge) return;
+    if (!textEl || !badge) return;
     const mins = Math.floor(remainingSec / 60);
     const secs = remainingSec % 60;
-    const clock = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-    badge.textContent = `⏱ ${clock}`;
+    textEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     if (isRunning) {
       badge.classList.add('active');
     } else {
@@ -149,9 +198,10 @@ export class CustomTitleBarView {
   }
 
   public setSyncStatus(text: string, isOk: boolean): void {
+    const textEl = this.container.querySelector('#tb-sync-text');
     const badge = this.container.querySelector('#tb-sync-badge');
-    if (badge) {
-      badge.textContent = text;
+    if (textEl && badge) {
+      textEl.textContent = text;
       badge.className = `badge-status ${isOk ? 'sync-ok' : ''}`;
     }
   }
