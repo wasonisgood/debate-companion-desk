@@ -35,7 +35,7 @@ jobs:
 
       - name: Cross-Package Windows Executables on Linux
         run: |
-          npx electron-builder --win portable zip
+          npx electron-builder --win nsis portable zip
 
       - name: Generate Update Manifest (latest.json)
         run: |

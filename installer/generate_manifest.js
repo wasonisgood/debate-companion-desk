@@ -13,23 +13,37 @@ if (!fs.existsSync(publishDir)) {
   fs.mkdirSync(publishDir, { recursive: true });
 }
 
-// Find installer or portable exe in root or release folder
-const possibleExes = [
-  path.join(rootDir, releaseConfig.installerFileName),
-  path.join(rootDir, 'release', `${releaseConfig.productName} 1.0.0.exe`),
-  path.join(rootDir, 'release', `${releaseConfig.productName}.exe`),
-  path.join(rootDir, 'release', `DebateCompanion.exe`)
-];
+const releaseDir = path.join(rootDir, 'release');
+let foundExe = null;
 
-let targetExe = possibleExes.find(p => fs.existsSync(p));
+if (fs.existsSync(releaseDir)) {
+  const files = fs.readdirSync(releaseDir);
+  const setupFile = files.find(f => f.toLowerCase().includes('setup') && f.endsWith('.exe'));
+  const anyExe = files.find(f => f.endsWith('.exe'));
+  if (setupFile) {
+    foundExe = path.join(releaseDir, setupFile);
+  } else if (anyExe) {
+    foundExe = path.join(releaseDir, anyExe);
+  }
+}
+
+if (!foundExe && fs.existsSync(path.join(rootDir, releaseConfig.installerFileName))) {
+  foundExe = path.join(rootDir, releaseConfig.installerFileName);
+}
+
 let fileSize = 0;
 let sha256 = '';
 
-if (targetExe) {
-  const fileBuf = fs.readFileSync(targetExe);
-  fileSize = fileBuf.length;
-  sha256 = crypto.createHash('sha256').update(fileBuf).digest('hex').toLowerCase();
-  fs.copyFileSync(targetExe, path.join(publishDir, releaseConfig.installerFileName));
+if (foundExe) {
+  const targetPath = path.join(rootDir, releaseConfig.installerFileName);
+  fs.copyFileSync(foundExe, targetPath);
+  fs.copyFileSync(foundExe, path.join(publishDir, releaseConfig.installerFileName));
+  const buf = fs.readFileSync(targetPath);
+  fileSize = buf.length;
+  sha256 = crypto.createHash('sha256').update(buf).digest('hex').toLowerCase();
+  console.log(`Copied ${foundExe} -> ${targetPath} (${fileSize} bytes, SHA256: ${sha256})`);
+} else {
+  console.warn('No executable found in release/ or root');
 }
 
 const manifest = {
