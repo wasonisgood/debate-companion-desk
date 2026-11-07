@@ -1,13 +1,13 @@
 {
-    "version":  "1.0.1",
+    "version":  "1.0.2",
     "minimumVersion":  "1.0.0",
     "mandatory":  false,
     "releaseDate":  "2026-11-07",
-    "installerUrl":  "https://github.com/wasonisgood/debate-companion-desk/releases/download/v1.0.1/DebateCompanionSetup.exe",
+    "installerUrl":  "https://github.com/wasonisgood/debate-companion-desk/releases/download/v1.0.2/DebateCompanionSetup.exe",
     "size":  122667008,
-    "sha256":  "93d1ca1d604044bbb9c827f0eaa2abd8b3d04459417ed13519f1330961b99e90",
+    "sha256":  "ab453c7c488a83c378873bc2b8a879ab0a8754357dc99858465f67b0bf8d1666",
     "notes":  {
-                  "zh":  "・新增線上自動熱修復與最新發行版自動/強制安裝引擎。\n・全新客製化安裝引導介面、更新程式與解除安裝精靈（100% 依循 wason.dev 紙質與朱紅印章美學）。\n・新增初始化網站權限檢查與瀏覽器授權回傳導引（支援 debate-companion:// 協定與本地 HTTP 橋接）。\n・修復懸浮球跑位與拖曳手勢，新增全新懸浮微型視窗 (Floating Mini HUD) 模式。\n・全面移除 AI 生成圖標，換裝設計師向量 SVG 圖示，並重構官方高解析度 app.ico。\n・全面接回 wason.dev 官方 Supabase 雲端資料庫（site_debate_load / site_debate_save）。\n・修復發音朗讀小幫手 (TTS Drill) 與手動標註老師講評按鈕事件連通。\n・修正「正方 (申請方)」、「反方 (被申請方)」術語誤植，全面升級全域自訂捲軸與響應式排版。",
-                  "en":  "・Added auto-update \u0026 hotfix engine with automatic/mandatory installation.\n・Customized native Installer, Updater and Uninstaller UI conforming to wason.dev aesthetics.\n・Added web authorization verification flow \u0026 browser handoff via custom protocol.\n・Fixed floating ball dragging and introduced dedicated Floating Mini HUD window mode.\n・Replaced AI generated icons with human-designed SVG vectors and authentic site icon.\n・Connected to official Supabase database for live debate bank synchronization.\n・Hooked up TTS Drill Modal and manual coach feedback split triggers.\n・Fixed moot court terminology typos and enhanced custom scrollbar and responsive layouts."
+                  "zh":  "・完整修復 Windows「設定 ➔ 應用程式」解除安裝註冊中繼資料（補全 EstimatedSize、DisplayIcon、NoModify、NoRepair、QuietUninstallString）。\n・解除安裝精靈全面升級獨立背景自毀清理行程，徹底清除主程式、本機快取與所有捷徑。\n・全新客製化安裝引導介面、更新程式與解除安裝精靈（100% 依循 wason.dev 紙質與朱紅印章美學）。\n・新增線上自動熱修復與最新發行版自動/強制安裝引擎。\n・新增初始化網站權限檢查與瀏覽器授權回傳導引（支援 debate-companion:// 協定與本地 HTTP 橋接）。\n・修復懸浮球跑位與拖曳手勢，新增全新懸浮微型視窗 (Floating Mini HUD) 模式。\n・全面移除 AI 生成圖標，換裝設計師向量 SVG 圖示，並重構官方高解析度 app.ico。\n・全面接回 wason.dev 官方 Supabase 雲端資料庫（site_debate_load / site_debate_save）。\n・修復發音朗讀小幫手 (TTS Drill) 與手動標註老師講評按鈕事件連通。\n・修正「正方 (申請方)」、「反方 (被申請方)」術語誤植，全面升級全域自訂捲軸與響應式排版。",
+                  "en":  "・Fully registered Windows Settings / Apps \u0026 Features metadata (EstimatedSize, DisplayIcon, NoModify, NoRepair, QuietUninstallString).\n・Enhanced Uninstaller with detached background process for complete file deletion and shortcut cleanup.\n・Added auto-update \u0026 hotfix engine with automatic/mandatory installation.\n・Customized native Installer, Updater and Uninstaller UI conforming to wason.dev aesthetics.\n・Added web authorization verification flow \u0026 browser handoff via custom protocol.\n・Fixed floating ball dragging and introduced dedicated Floating Mini HUD window mode.\n・Replaced AI generated icons with human-designed SVG vectors and authentic site icon.\n・Connected to official Supabase database for live debate bank synchronization.\n・Hooked up TTS Drill Modal and manual coach feedback split triggers.\n・Fixed moot court terminology typos and enhanced custom scrollbar and responsive layouts."
               }
 }
