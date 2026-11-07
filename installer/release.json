@@ -8,7 +8,7 @@
   "minimumVersion": "1.0.0",
   "mandatory": false,
   "notes": {
-    "zh": "・全面對齊蕉葉堂（shoyodo-archive-desk）高規格典雅和風安裝、更新與解除安裝三大原生精靈架構。\n・安裝導引支援線上自我版本檢測、既有安裝偵測（全新/升級/修復模式）、路徑自選、磁碟空間驗證與進度回報。\n・更新程式支援版本對照徽章、更新內容捲軸檢視、強制更新警告橫幅與「不再提醒」延後功能。\n・解除安裝精靈支援台帳挽留建議、僅清理暫存快取（保留雲端紀錄）、離別問卷調查與獨立自毀腳本。\n・修復 wason.dev 網站端 404 網址問題（支援 /lab/debate-prep 與 /debate），新增桌面端案頭授權橫幅一鍵回傳金鑰。\n・全面修正 Windows 設定中繼資料與 Shell 廣播更新。",
-    "en": "・Fully aligned with shoyodo-archive-desk standard for native Installer, Updater and Uninstaller suites.\n・Installer features online self-update check, existing install mode detection (fresh/upgrade/repair), path selection and disk space verification.\n・Updater features version contrast badges, scrollable release notes, mandatory update banners and snooze reminders.\n・Uninstaller features retention suggestions, cache-only reset, farewell feedback survey and detached self-deletion batch script.\n・Fixed wason.dev 404 route (/lab/debate-prep and /debate) and added one-click web-to-desktop auth handoff banner.\n・Fully registered Windows Settings metadata and shell association change notifications."
+    "zh": "・全面修復客製化安裝精靈介面：確保 DebateCompanionSetup.exe 載入原生 C# WPF 古典和風書卷視窗，徹底移除多餘 NSIS 目標與避免檔案誤覆蓋。\n・健全化 CI/CD 發布流程：發布前自動執行二進位簽名、.NET CLR 標頭與檔案體積三重檢驗，保證發行檔完整性。\n・全面支援 Windows 10/11 Surface 平板觸控手勢、智慧計時器與模擬法庭法官發音小幫手。",
+    "en": "・Fixed custom installer UI: Guaranteed genuine C# WPF classical desk UI in DebateCompanionSetup.exe and eliminated NSIS conflicts.\n・Robust CI/CD pipeline: Integrated binary signature, .NET header and file size integrity checks before publishing release assets.\n・Full support for Windows 10/11 Surface touch gestures, moot court bells, and legal Latin pronunciation assistant."
   }
 }
