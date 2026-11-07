@@ -1,4 +1,4 @@
-name: Release & Package Windows Executables (Linux Runner)
+name: Release & Package Windows Executables
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-and-release:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     permissions:
       contents: write
 
@@ -33,9 +33,14 @@ jobs:
       - name: Build Web Renderer
         run: npm run build
 
-      - name: Cross-Package Windows Executables on Linux
+      - name: Package Windows Executables (NSIS, Portable, Zip)
         run: |
           npx electron-builder --win nsis portable zip
+
+      - name: Build Native Setup & Updater (C# WPF)
+        shell: powershell
+        run: |
+          powershell -ExecutionPolicy Bypass -File installer/build_installer.ps1 -RebuildPayload
 
       - name: Generate Update Manifest (latest.json)
         run: |
@@ -48,8 +53,8 @@ jobs:
           files: |
             release/*.exe
             release/*.zip
-            installer/publish/latest.json
             DebateCompanionSetup.exe
+            installer/publish/latest.json
           generate_release_notes: true
           draft: false
           prerelease: false
