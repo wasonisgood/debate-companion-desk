@@ -35,7 +35,10 @@ jobs:
 
       - name: Package Windows Executables (NSIS, Portable, Zip)
         run: |
-          npx electron-builder --win nsis portable zip
+          npx electron-builder --win nsis portable zip --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Native Setup & Updater (C# WPF)
         shell: powershell
@@ -58,3 +61,5 @@ jobs:
           generate_release_notes: true
           draft: false
           prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
