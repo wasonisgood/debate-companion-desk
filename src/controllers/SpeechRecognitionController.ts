@@ -5,6 +5,8 @@ export class SpeechRecognitionController {
   private isListening: boolean = false;
   private subscribers: Set<TranscriptCallback> = new Set();
   private mockInterval: any = null;
+  private consecutiveErrors: number = 0;
+  private restartTimeout: any = null;
 
   constructor() {
     this.initRecognition();
@@ -34,24 +36,30 @@ export class SpeechRecognitionController {
 
           const currentText = (finalTranscript || interimTranscript).trim();
           if (currentText) {
+            this.consecutiveErrors = 0;
             this.broadcast(currentText, !!finalTranscript);
           }
         };
 
         this.recognition.onerror = () => {
-          // Restart if still marked listening
-          if (this.isListening) {
-            setTimeout(() => {
+          this.consecutiveErrors++;
+          // Restart only if user is still actively listening and under reasonable retry threshold
+          if (this.isListening && this.consecutiveErrors <= 3) {
+            if (this.restartTimeout) clearTimeout(this.restartTimeout);
+            this.restartTimeout = setTimeout(() => {
               try { this.recognition.start(); } catch (_) {}
-            }, 500);
+            }, 1000);
+          } else {
+            this.isListening = false;
           }
         };
 
         this.recognition.onend = () => {
-          if (this.isListening) {
-            setTimeout(() => {
+          if (this.isListening && this.consecutiveErrors <= 3) {
+            if (this.restartTimeout) clearTimeout(this.restartTimeout);
+            this.restartTimeout = setTimeout(() => {
               try { this.recognition.start(); } catch (_) {}
-            }, 300);
+            }, 500);
           }
         };
       }
@@ -66,6 +74,7 @@ export class SpeechRecognitionController {
   public start(): boolean {
     if (this.isListening) return true;
     this.isListening = true;
+    this.consecutiveErrors = 0;
 
     if (this.recognition) {
       try {
@@ -78,6 +87,11 @@ export class SpeechRecognitionController {
 
   public stop(): void {
     this.isListening = false;
+    this.consecutiveErrors = 0;
+    if (this.restartTimeout) {
+      clearTimeout(this.restartTimeout);
+      this.restartTimeout = null;
+    }
     if (this.mockInterval) {
       clearInterval(this.mockInterval);
       this.mockInterval = null;

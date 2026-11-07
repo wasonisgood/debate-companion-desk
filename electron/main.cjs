@@ -287,62 +287,75 @@ function createWindow() {
       const tempDir = app.getPath('temp');
       const targetExePath = path.join(tempDir, 'DebateCompanionUpdateSetup.exe');
 
+      // Stream download with clean socket cleanup and redirect handling
       await new Promise((resolve, reject) => {
-        const u = new URL(urlStr);
-        const mod = u.protocol === 'https:' ? https : http;
+        let redirects = 0;
         const fileStream = fs.createWriteStream(targetExePath);
 
-        const req = mod.get(urlStr, { headers: { 'User-Agent': 'DebateCompanion-Updater' } }, (res) => {
-          if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-            // Follow redirect
-            mod.get(res.headers.location, (redRes) => {
-              const totalBytes = parseInt(redRes.headers['content-length'] || '0', 10);
-              let receivedBytes = 0;
-              redRes.on('data', chunk => {
-                receivedBytes += chunk.length;
-                if (totalBytes > 0 && mainWindow && !mainWindow.isDestroyed()) {
-                  mainWindow.webContents.send('update-download-progress', {
-                    percent: Math.min(100, Math.round((receivedBytes / totalBytes) * 100)),
-                    transferred: receivedBytes,
-                    total: totalBytes
-                  });
-                }
-              });
-              redRes.pipe(fileStream);
-              fileStream.on('finish', () => fileStream.close(resolve));
-            }).on('error', reject);
-            return;
+        const fetchUrl = (currentUrl) => {
+          if (redirects++ > 6) {
+            fileStream.destroy();
+            return reject(new Error('下載重導向次數過多。'));
           }
 
-          if (res.statusCode !== 200) {
-            reject(new Error(`下載失敗，HTTP 代碼: ${res.statusCode}`));
-            return;
-          }
-
-          const totalBytes = parseInt(res.headers['content-length'] || '0', 10);
-          let receivedBytes = 0;
-          res.on('data', chunk => {
-            receivedBytes += chunk.length;
-            if (totalBytes > 0 && mainWindow && !mainWindow.isDestroyed()) {
-              mainWindow.webContents.send('update-download-progress', {
-                percent: Math.min(100, Math.round((receivedBytes / totalBytes) * 100)),
-                transferred: receivedBytes,
-                total: totalBytes
-              });
+          const u = new URL(currentUrl);
+          const mod = u.protocol === 'https:' ? https : http;
+          const req = mod.get(currentUrl, { headers: { 'User-Agent': 'DebateCompanion-Updater' } }, (res) => {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+              res.resume(); // Drain and release socket immediately to prevent socket/memory leak
+              const nextUrl = new URL(res.headers.location, currentUrl).href;
+              return fetchUrl(nextUrl);
             }
-          });
-          res.pipe(fileStream);
-          fileStream.on('finish', () => fileStream.close(resolve));
-        });
 
-        req.on('error', reject);
+            if (res.statusCode !== 200) {
+              res.resume();
+              fileStream.destroy();
+              return reject(new Error(`下載失敗，HTTP 代碼: ${res.statusCode}`));
+            }
+
+            const totalBytes = parseInt(res.headers['content-length'] || '0', 10);
+            let receivedBytes = 0;
+            res.on('data', chunk => {
+              receivedBytes += chunk.length;
+              if (totalBytes > 0 && mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('update-download-progress', {
+                  percent: Math.min(100, Math.round((receivedBytes / totalBytes) * 100)),
+                  transferred: receivedBytes,
+                  total: totalBytes
+                });
+              }
+            });
+
+            res.pipe(fileStream);
+            fileStream.on('finish', () => {
+              fileStream.close(resolve);
+            });
+            fileStream.on('error', (err) => {
+              fileStream.destroy();
+              reject(err);
+            });
+          });
+
+          req.on('error', (err) => {
+            fileStream.destroy();
+            reject(err);
+          });
+        };
+
+        fetchUrl(urlStr);
       });
 
-      // Verify SHA256 if provided
+      // Streamed SHA256 verification (avoids allocating 80MB buffer in V8 heap)
       if (updateInfo.sha256) {
-        const buf = fs.readFileSync(targetExePath);
-        const hash = crypto.createHash('sha256').update(buf).digest('hex').toLowerCase();
-        if (hash !== updateInfo.sha256.toLowerCase()) {
+        const actualHash = await new Promise((resolveHash, rejectHash) => {
+          const hash = crypto.createHash('sha256');
+          const rs = fs.createReadStream(targetExePath);
+          rs.on('data', chunk => hash.update(chunk));
+          rs.on('end', () => resolveHash(hash.digest('hex').toLowerCase()));
+          rs.on('error', rejectHash);
+        });
+
+        if (actualHash !== updateInfo.sha256.toLowerCase()) {
           throw new Error('更新安裝檔 SHA256 驗證不合，檔案可能已損毀。');
         }
       }

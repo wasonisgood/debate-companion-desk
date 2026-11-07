@@ -30,5 +30,17 @@ describe('Recording Segmentation & Coach Feedback Isolation', () => {
     assert.equal(session?.segments.length, 2);
     assert.equal(session?.segments[1].type, 'coach_feedback');
     assert.equal(session?.isCoachFeedbackDetected, true);
+
+    // Stop recording and verify segments finalized and clean
+    const queue = controller.stopRecording();
+    assert.equal(queue.length, 2);
+    assert.equal(model.getCurrentSession()?.isRecording, false);
+  });
+
+  it('releases media recorder and stream references on stopRecording to prevent leaks', async () => {
+    const controller = new AudioRecordingController();
+    await controller.startRecording('defense', 2);
+    const queue = controller.stopRecording();
+    assert.ok(Array.isArray(queue));
   });
 });

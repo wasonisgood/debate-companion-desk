@@ -591,7 +591,9 @@ namespace DebateCompanionUpdater {
                 var app = new Application { ShutdownMode = ShutdownMode.OnMainWindowClose };
                 app.DispatcherUnhandledException += (s, e) => { UpdateCommon.Log("Unhandled: " + e.Exception); e.Handled = true; };
                 var win = new UpdaterWindow(manual, appVersion, m, lang);
+                win.Closed += (s, e) => Environment.Exit(win.ExitCode);
                 app.Run(win);
+                Environment.Exit(win.ExitCode);
                 return win.ExitCode;
             }
         }

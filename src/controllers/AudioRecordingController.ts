@@ -4,6 +4,7 @@ import type { AudioSegment, Side, CounselSeat } from '../types';
 export class AudioRecordingController {
   private model: RecordingModel;
   private mediaRecorder: any = null;
+  private activeStream: any = null;
   private audioChunks: Blob[] = [];
   private onSegmentCreated?: (seg: AudioSegment) => void;
 
@@ -20,8 +21,17 @@ export class AudioRecordingController {
       this.model.startSession(side, seat, matchId);
       this.audioChunks = [];
 
+      // Clean up any previously unclosed stream
+      if (this.activeStream) {
+        try {
+          this.activeStream.getTracks().forEach((track: any) => track.stop());
+        } catch (_) {}
+        this.activeStream = null;
+      }
+
       if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        this.activeStream = stream;
         const RecorderClass = (window as any).MediaRecorder;
         if (RecorderClass) {
           this.mediaRecorder = new RecorderClass(stream);
@@ -67,9 +77,24 @@ export class AudioRecordingController {
   }
 
   public stopRecording(): AudioSegment[] {
-    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-      try { this.mediaRecorder.stop(); } catch (_) {}
+    if (this.mediaRecorder) {
+      try {
+        if (this.mediaRecorder.state !== 'inactive') {
+          this.mediaRecorder.stop();
+        }
+      } catch (_) {}
+      this.mediaRecorder.ondataavailable = null;
+      this.mediaRecorder = null;
     }
+
+    if (this.activeStream) {
+      try {
+        this.activeStream.getTracks().forEach((track: any) => track.stop());
+      } catch (_) {}
+      this.activeStream = null;
+    }
+
+    this.audioChunks = [];
     this.model.stopSession();
     return this.model.getSyncQueue();
   }
