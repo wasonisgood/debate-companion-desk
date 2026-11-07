@@ -141,6 +141,15 @@ namespace DebateCompanion {
                 }
             }
 
+            // Create Desktop and Start Menu shortcuts
+            string exePath = Path.Combine(installDir, "DebateCompanion.exe");
+            try {
+                string desktopDir = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                UpdateCommon.CreateShortcut(Path.Combine(desktopDir, "模擬庭提問陪伴台帳.lnk"), exePath, installDir, "模擬庭提問陪伴台帳");
+                string startDir = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
+                UpdateCommon.CreateShortcut(Path.Combine(startDir, "模擬庭提問陪伴台帳.lnk"), exePath, installDir, "模擬庭提問陪伴台帳");
+            } catch { }
+
             // Register debate-companion:// Protocol
             RegisterProtocol(installDir);
 
@@ -163,13 +172,37 @@ namespace DebateCompanion {
 
         private static void RegisterUninstall(string installDir) {
             try {
+                string exePath = Path.Combine(installDir, "DebateCompanion.exe");
+                string uninstPath = Path.Combine(installDir, "uninstall.exe");
+
+                long totalBytes = 0;
+                try {
+                    var di = new DirectoryInfo(installDir);
+                    foreach (var f in di.EnumerateFiles("*", SearchOption.AllDirectories)) {
+                        totalBytes += f.Length;
+                    }
+                } catch { }
+                int sizeKb = (int)(totalBytes / 1024);
+                if (sizeKb <= 0) sizeKb = 150000;
+
                 using (var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\DebateCompanion")) {
                     key.SetValue("DisplayName", "模擬庭提問陪伴台帳");
                     key.SetValue("DisplayVersion", BuildInfo.Version);
                     key.SetValue("Publisher", "wasonisgood");
                     key.SetValue("InstallLocation", installDir);
-                    key.SetValue("UninstallString", "\"" + Path.Combine(installDir, "uninstall.exe") + "\"");
+                    key.SetValue("UninstallString", "\"" + uninstPath + "\"");
+                    key.SetValue("QuietUninstallString", "\"" + uninstPath + "\" --silent");
+                    key.SetValue("DisplayIcon", exePath + ",0");
+                    key.SetValue("EstimatedSize", sizeKb, RegistryValueKind.DWord);
+                    key.SetValue("NoModify", 1, RegistryValueKind.DWord);
+                    key.SetValue("NoRepair", 1, RegistryValueKind.DWord);
+                    key.SetValue("WindowsInstaller", 0, RegistryValueKind.DWord);
+                    key.SetValue("InstallDate", DateTime.Now.ToString("yyyyMMdd"));
+                    key.SetValue("HelpLink", "https://wason.dev");
+                    key.SetValue("URLInfoAbout", "https://wason.dev");
+                    key.SetValue("URLUpdateInfo", "https://github.com/wasonisgood/debate-companion-desk/releases");
                 }
+                UpdateCommon.NotifyShell();
             } catch { }
         }
 

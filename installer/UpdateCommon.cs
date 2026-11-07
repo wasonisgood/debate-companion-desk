@@ -1,6 +1,8 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Web.Script.Serialization;
@@ -289,6 +291,59 @@ namespace DebateCompanion {
             btn.BorderThickness = new Thickness(1);
 
             return btn;
+        }
+
+        [DllImport("shell32.dll")]
+        private static extern void SHChangeNotify(int wEventId, uint uFlags, IntPtr dwItem1, IntPtr dwItem2);
+
+        public static void NotifyShell() {
+            try {
+                // SHCNE_ASSOCCHANGED = 0x08000000, SHCNF_IDLIST = 0x0000
+                SHChangeNotify(0x08000000, 0x0000, IntPtr.Zero, IntPtr.Zero);
+            } catch { }
+        }
+
+        public static void CreateShortcut(string shortcutPath, string targetPath, string workingDir, string description) {
+            try {
+                Type shellType = Type.GetTypeFromProgID("WScript.Shell");
+                if (shellType == null) return;
+                dynamic shell = Activator.CreateInstance(shellType);
+                dynamic shortcut = shell.CreateShortcut(shortcutPath);
+                shortcut.TargetPath = targetPath;
+                shortcut.WorkingDirectory = workingDir;
+                shortcut.IconLocation = targetPath + ",0";
+                shortcut.Description = description;
+                shortcut.Save();
+            } catch { }
+        }
+
+        public static void KillProcesses(params string[] processNames) {
+            foreach (var name in processNames) {
+                try {
+                    foreach (var proc in Process.GetProcessesByName(name)) {
+                        try {
+                            proc.Kill();
+                            proc.WaitForExit(2000);
+                        } catch { }
+                    }
+                } catch { }
+            }
+        }
+
+        public static void ScheduleDirectoryDeletion(string dirPath) {
+            try {
+                if (string.IsNullOrEmpty(dirPath) || !Directory.Exists(dirPath)) return;
+                // Launch detached cmd that waits 1.5 seconds for the current process to exit, then recursively deletes dirPath
+                string cmd = string.Format("/C ping 127.0.0.1 -n 3 > nul & rd /s /q \"{0}\"", dirPath);
+                var psi = new ProcessStartInfo {
+                    FileName = "cmd.exe",
+                    Arguments = cmd,
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                    CreateNoWindow = true,
+                    UseShellExecute = false
+                };
+                Process.Start(psi);
+            } catch { }
         }
     }
 }
