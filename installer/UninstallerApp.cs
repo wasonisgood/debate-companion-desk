@@ -842,7 +842,11 @@ namespace DebateCompanionUninstaller {
                 return;
             }
 
-            new App().Run(new UninstallerWindow());
+            var app = new App { ShutdownMode = ShutdownMode.OnMainWindowClose };
+            var win = new UninstallerWindow();
+            win.Closed += (s, e) => Environment.Exit(0);
+            app.Run(win);
+            Environment.Exit(0);
         }
 
         private static void SilentUninstall() {

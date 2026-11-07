@@ -111,6 +111,7 @@ namespace DebateCompanion {
                 http.ReadWriteTimeout = timeoutMs;
                 http.UserAgent = "DebateCompanion-Updater/" + CurrentBuildVersion;
                 http.AllowAutoRedirect = true;
+                http.KeepAlive = false;
                 http.CachePolicy = new System.Net.Cache.RequestCachePolicy(System.Net.Cache.RequestCacheLevel.NoCacheNoStore);
             }
             string json;
@@ -164,6 +165,7 @@ namespace DebateCompanion {
                 http.ReadWriteTimeout = 60000;
                 http.UserAgent = "DebateCompanion-Updater/" + CurrentBuildVersion;
                 http.AllowAutoRedirect = true;
+                http.KeepAlive = false;
             }
             using (WebResponse resp = req.GetResponse()) {
                 long total = resp.ContentLength > 0 ? resp.ContentLength : expectedSize;

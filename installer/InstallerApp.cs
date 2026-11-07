@@ -18,6 +18,18 @@ namespace DebateCompanionInstaller {
     public class InstallerWindow : Window {
         private string currentLang = "zh";
 
+        [DllImport("psapi.dll")]
+        private static extern int EmptyWorkingSet(IntPtr hwProc);
+
+        public static void TrimMemory() {
+            try {
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true);
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+                EmptyWorkingSet(Process.GetCurrentProcess().Handle);
+            } catch { }
+        }
+
         // 色彩配置（典雅宣紙與朱砂紅，與 wason.dev 和風古籍風格完全一致）
         private static readonly SolidColorBrush BrushPaper = new SolidColorBrush(Color.FromRgb(0xF1, 0xEC, 0xE2));
         private static readonly SolidColorBrush BrushPaperCard = new SolidColorBrush(Color.FromRgb(0xF7, 0xF3, 0xEA));
@@ -113,6 +125,10 @@ namespace DebateCompanionInstaller {
             DetectExistingInstall();
             UpdateLanguage();
             Loaded += OnStartup;
+            Closed += (s, e) => {
+                try { TrimMemory(); } catch { }
+                Environment.Exit(0);
+            };
         }
 
         private void OnStartup(object sender, RoutedEventArgs e) {
@@ -212,6 +228,7 @@ namespace DebateCompanionInstaller {
                     Process.Start(new ProcessStartInfo { FileName = dest, Arguments = args, UseShellExecute = true });
                     installFinished = true;
                     Application.Current.Shutdown();
+                    Environment.Exit(0);
                     return;
                 } catch (Exception ex) {
                     error = ex.Message;
@@ -976,6 +993,7 @@ namespace DebateCompanionInstaller {
                         : "安裝套件不完整：內部缺少應用程式核心組件，請下載完整發布版本。");
                 }
                 string zipTmp = Path.Combine(Path.GetTempPath(), "debate-payload-" + Guid.NewGuid().ToString("N") + ".zip");
+                try {
                     using (FileStream fs = File.Create(zipTmp)) {
                         zipStream.CopyTo(fs);
                     }
@@ -999,7 +1017,10 @@ namespace DebateCompanionInstaller {
                             }
                         }
                     }
+                } finally {
                     try { File.Delete(zipTmp); } catch { }
+                }
+                TrimMemory();
             }
 
             report(82, en ? "Installing uninstaller and updater…" : "正在安裝專屬解除安裝與更新精靈…");
@@ -1126,6 +1147,7 @@ namespace DebateCompanionInstaller {
             if (File.Exists(exe)) {
                 try { Process.Start(exe); } catch { }
             }
+            Environment.Exit(0);
         }
     }
 
@@ -1138,6 +1160,7 @@ namespace DebateCompanionInstaller {
     public class App : Application {
         [STAThread]
         public static void Main(string[] args) {
+            int oldPid = 0;
             if (args != null) {
                 for (int i = 0; i < args.Length; i++) {
                     string a = args[i];
@@ -1147,10 +1170,32 @@ namespace DebateCompanionInstaller {
                         InstallerOptions.UpdateMode = true;
                     } else if (string.Equals(a, "--no-self-update", StringComparison.OrdinalIgnoreCase)) {
                         InstallerOptions.NoSelfUpdate = true;
+                    } else if (string.Equals(a, "--old-pid", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) {
+                        int.TryParse(args[++i], out oldPid);
+                    } else if (string.Equals(a, "--replace", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) {
+                        i++;
                     }
                 }
             }
-            new App().Run(new InstallerWindow());
+
+            // If replacing an older installer process, ensure the old process is terminated
+            if (oldPid > 0) {
+                try {
+                    Process oldP = Process.GetProcessById(oldPid);
+                    if (!oldP.WaitForExit(3000)) {
+                        oldP.Kill();
+                    }
+                } catch { }
+            }
+
+            try {
+                var app = new App { ShutdownMode = ShutdownMode.OnMainWindowClose };
+                var win = new InstallerWindow();
+                win.Closed += (s, e) => Environment.Exit(0);
+                app.Run(win);
+            } finally {
+                Environment.Exit(0);
+            }
         }
     }
 }
