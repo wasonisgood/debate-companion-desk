@@ -16,6 +16,7 @@ import { BridgeController } from './BridgeController';
 
 import type { Side, CounselSeat, BenchQuestion, OralUnit, AuthSession } from '../types';
 import { followUpFor, type FollowUpResult } from '../services/DebateAIService';
+import { fetchDebateBank } from '../web/lib/debateStorage';
 
 export class DebatePracticeController {
   public debateModel: DebateModel;
@@ -68,17 +69,8 @@ export class DebatePracticeController {
       if (this.onAuthGranted) {
         this.onAuthGranted(session);
       }
-      // Asynchronously fetch debate bank without blocking instant UI auth transition
-      (async () => {
-        try {
-          const { SupabaseService } = await import('../services/SupabaseService');
-          const bank = await SupabaseService.getInstance().loadDebateBank();
-          if (bank && bank.data) {
-            this.debateModel.updateData(bank.data);
-            this.switchSide(this.settingsModel.getSettings().targetSide);
-          }
-        } catch (_) {}
-      })();
+      // Fetch the shared bank once the website session is active (no UI wait).
+      void this.bridgeController.sessionReady.then(() => this.refreshBank()).catch(() => {});
     });
 
     this.setupOrchestration();
@@ -196,6 +188,23 @@ export class DebatePracticeController {
    * 即時追問: builds the follow-up from what the debater actually said (Claude when
    * available, rules engine otherwise). Returns null when there is no answer yet.
    */
+  /**
+   * Pull the shared bank through the website storage (same login and code rules).
+   * Returns true when a bank was loaded.
+   */
+  public async refreshBank(): Promise<boolean> {
+    try {
+      const bank = await fetchDebateBank(this.authModel.getDebateCode());
+      if (!bank?.data) return false;
+      this.debateModel.replaceFromBank(bank.data);
+      this.switchSide(this.settingsModel.getSettings().targetSide);
+      return true;
+    } catch (e) {
+      console.warn('Shared debate bank could not be loaded', e);
+      return false;
+    }
+  }
+
   public async triggerFollowUp(baseQuestion: BenchQuestion, spokenAnswer: string = this.lastFinalAnswer): Promise<FollowUpResult | null> {
     const answer = spokenAnswer.trim();
     if (!answer) return null;

@@ -226,15 +226,16 @@ export class AppView {
 
   private async syncCloudDebateBank(): Promise<void> {
     try {
-      const bank = await SupabaseService.getInstance().loadDebateBank();
-      if (bank && bank.data) {
-        this.controller.debateModel.updateData(bank.data);
+      const loaded = await this.controller.refreshBank();
+      if (loaded) {
         const questions = this.controller.debateModel.getQuestionsForSide(this.controller.contextEngine.getSide());
         this.questionPrompterView.setQuestions(questions);
         const activeNode = this.controller.roadmapModel.getActiveNode();
         const unit = this.controller.debateModel.findOralUnitById(activeNode?.id || '');
         this.scriptAlignmentView.setUnit(unit || null);
         this.titleBarView.setSyncStatus('雲端資料庫已同步最新爭點', true);
+      } else {
+        this.titleBarView.setSyncStatus('尚未取得雲端題庫，目前顯示示範案例', false);
       }
     } catch (e) {
       console.warn('Sync cloud debate bank note:', e);
