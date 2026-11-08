@@ -373,3 +373,11 @@
   border-radius: var(--radius);
   margin-top: 0.5rem;
 }
+
+/* Live follow-up card (built from the debater's actual answer). */
+.live-followup { gap: 0.4rem; padding: 0.85rem; border-left: 3px solid var(--ainezu); }
+.live-followup .live-en { font-family: var(--latin); font-size: 0.92rem; line-height: 1.45; color: var(--ink); }
+.live-followup .live-zh { font-size: 0.8rem; color: var(--ink-2); }
+.live-followup .live-engine { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-3); }
+.live-followup .live-muted { font-size: 0.8rem; color: var(--ink-3); }
+.live-followup .live-error { font-size: 0.8rem; color: var(--shu-ink); }
