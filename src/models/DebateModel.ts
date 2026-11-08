@@ -1,9 +1,25 @@
 import type { DebateData, BenchQuestion, OralUnit, Side, CounselSeat } from '../types';
+import { loadDebateData, saveDebateData } from '../web/lib/debateStorage';
 
+/**
+ * The question bank is the website's shared bank (debateStorage): the cloud copy
+ * when it exists, its local cache otherwise. The built-in demo case is used only
+ * when no bank has been loaded yet, is never written back, and is flagged so the
+ * UI can say so.
+ */
 export class DebateModel {
   private data: DebateData;
+  private demo = false;
 
   constructor(initialData?: Partial<DebateData>) {
+    if (!initialData) {
+      const stored = loadDebateData();
+      if (stored.prosecutionQuestions.length + stored.defenseQuestions.length > 0) {
+        this.data = stored;
+        return;
+      }
+      this.demo = true;
+    }
     this.data = {
       prosecutionQuestions: initialData?.prosecutionQuestions ?? this.defaultProsecutionQuestions(),
       defenseQuestions: initialData?.defenseQuestions ?? this.defaultDefenseQuestions(),
@@ -12,10 +28,9 @@ export class DebateModel {
       followUpExamples: initialData?.followUpExamples ?? [],
       matches: initialData?.matches ?? [],
       prep: initialData?.prep ?? {
-        teamNumber: 'Team 42',
-        factsSummary: 'Statement of Agreed Facts regarding extraterritorial airstrike and medical convoy incident in contested territory.',
-        applicantMemorialOverview: 'Applicant submits that the State breached Article 2(4) of the UN Charter and customary international humanitarian law regarding target distinction and proportionality.',
-        respondentMemorialOverview: 'Respondent contends the military operation complied with the law of self-defence under Article 51 and all reasonable precautions were taken.'
+        team: 'Team 42',
+        facts: 'Statement of Agreed Facts regarding extraterritorial airstrike and medical convoy incident in contested territory.',
+        factsName: 'Statement of Agreed Facts (示範)'
       }
     };
   }
@@ -24,8 +39,30 @@ export class DebateModel {
     return this.data;
   }
 
+  /** True while the built-in demo case is shown instead of the shared bank. */
+  public isDemo(): boolean {
+    return this.demo;
+  }
+
+  /** Re-read the shared bank from the local cache (after a sign-in or a sync). */
+  public reload(): void {
+    const stored = loadDebateData();
+    if (stored.prosecutionQuestions.length + stored.defenseQuestions.length > 0) {
+      this.data = stored;
+      this.demo = false;
+    }
+  }
+
+  /** Replace the data with the bank the website just returned. Not written back here. */
+  public replaceFromBank(newData: DebateData): void {
+    this.data = { ...newData };
+    this.demo = false;
+  }
+
+  /** Store an edited bank locally and sync it through the website storage. */
   public updateData(newData: Partial<DebateData>): void {
     this.data = { ...this.data, ...newData };
+    if (!this.demo) saveDebateData(this.data);
   }
 
   public getQuestionsForSide(side: Side, seat?: CounselSeat): BenchQuestion[] {

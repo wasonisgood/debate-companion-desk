@@ -7,6 +7,7 @@ export class RecordingModel {
   constructor() {}
 
   public startSession(side: Side, seat?: CounselSeat, matchId?: string): RecordingSession {
+    this.syncQueue = [];
     const session: RecordingSession = {
       id: `rec-${Date.now()}`,
       startTime: Date.now(),
@@ -82,6 +83,11 @@ export class RecordingModel {
 
     const completed = this.currentSession;
     return completed;
+  }
+
+  /** Forget the finished session's segments once they have been handed to the sync step. */
+  public clearSyncQueue(): void {
+    this.syncQueue = [];
   }
 
   public getSyncQueue(): AudioSegment[] {

@@ -14,7 +14,7 @@ export interface ContextPayload {
 export class ContextEngineModel {
   private currentSide: Side = 'prosecution';
   private currentSeat: CounselSeat = 1;
-  private prepMeta: PrepMeta = {};
+  private prepMeta: PrepMeta = { team: "", facts: "", factsName: "" };
   private activeMatch: MatchPrep | null = null;
 
   constructor(side: Side = 'prosecution', seat: CounselSeat = 1, prepMeta?: PrepMeta, match?: MatchPrep) {
@@ -57,27 +57,33 @@ export class ContextEngineModel {
     const sideLabel = isApplicant ? 'Applicant (正方 / 申請方)' : 'Respondent (反方 / 被申請方)';
     const opponentLabel = isApplicant ? 'Respondent (被申請方)' : 'Applicant (申請方)';
 
-    const ourMemorial = isApplicant
-      ? this.prepMeta.applicantMemorialOverview || 'Focus on UN Charter Art 2(4), state attribution under ILC Art 8, and Additional Protocol I distinction.'
-      : this.prepMeta.respondentMemorialOverview || 'Focus on UN Charter Art 51 self-defence, absence of attribution, and target proportionality.';
+    // Our position: the priorities of the active match; the opponent's: the headings
+    // of the memorial imported for that match (對方書狀). Falls back to the standing focus.
+    const opponentMemorial = this.activeMatch?.memorial
+      ? this.activeMatch.memorial.paras.slice(0, 8).map((p) => p.head).filter(Boolean).join('; ')
+      : '';
+    const ourPriorities = this.activeMatch?.assess.priorities.filter(Boolean).join('; ') ?? '';
+    const ourMemorial = ourPriorities || (isApplicant
+      ? 'Focus on UN Charter Art 2(4), state attribution under ILC Art 8, and Additional Protocol I distinction.'
+      : 'Focus on UN Charter Art 51 self-defence, absence of attribution, and target proportionality.');
+    const opponentCore = opponentMemorial || (isApplicant
+      ? 'Anticipate self-defence justifications and lack of state responsibility.'
+      : 'Anticipate claims of territorial sovereignty violations.');
 
-    const opponentMemorial = isApplicant
-      ? this.prepMeta.respondentMemorialOverview || 'Anticipate self-defence justifications and lack of state responsibility.'
-      : this.prepMeta.applicantMemorialOverview || 'Anticipate claims of territorial sovereignty violations.';
-
-    const facts = this.prepMeta.factsSummary || 'Dispute regarding cross-border military strikes and civilian casualty allegations.';
+    const facts = this.prepMeta.facts?.trim().slice(0, 1200)
+      || 'Dispute regarding cross-border military strikes and civilian casualty allegations.';
 
     return `
 [JUDICIAL CONTEXT]
 - Court: International Court of Justice (Bench Practice)
 - Practicing Side: ${sideLabel} (Counsel Seat ${this.currentSeat})
-- Opponent: ${opponentLabel} (${this.activeMatch?.opponentTeam || 'Unknown Opponent'})
+- Opponent: ${opponentLabel} (${this.activeMatch?.oppTeam || 'Unknown Opponent'})
 - Active Stage: ${activeSection}
 
 [FACTS & MEMORIALS]
 - Moot Problem / Facts: ${facts}
 - Our Memorial Core: ${ourMemorial}
-- Opponent Counter-Memorial Core: ${opponentMemorial}
+- Opponent Counter-Memorial Core: ${opponentCore}
 
 [DEBATER SPOKEN CONTENT]
 "${spokenTranscript}"

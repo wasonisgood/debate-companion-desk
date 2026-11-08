@@ -41,6 +41,9 @@ class BridgeServer {
           const token = parsedUrl.searchParams.get('token');
           const userId = parsedUrl.searchParams.get('user_id') || 'researcher';
           const email = parsedUrl.searchParams.get('email') || '';
+          const accessToken = parsedUrl.searchParams.get('access_token') || '';
+          const refreshToken = parsedUrl.searchParams.get('refresh_token') || '';
+          const expiresAt = Number(parsedUrl.searchParams.get('expires_at')) || 0;
 
           if (token) {
             const session = {
@@ -48,6 +51,9 @@ class BridgeServer {
               userName: decodeURIComponent(parsedUrl.searchParams.get('name') || 'Debate Researcher'),
               userEmail: decodeURIComponent(email),
               token,
+              accessToken,
+              refreshToken,
+              expiresAt,
               role: 'researcher',
               authorizedAt: Date.now()
             };

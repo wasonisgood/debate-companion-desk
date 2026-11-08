@@ -1,9 +1,12 @@
 import type { AuthSession } from '../types';
 import { AuthModel } from '../models/AuthModel';
+import { restoreWebSession } from '../services/WebSession';
 
 export class BridgeController {
   private authModel: AuthModel;
   private listeners: Array<(session: AuthSession) => void> = [];
+  /** Resolves once the website session from the latest handoff is active (or failed). */
+  public sessionReady: Promise<boolean> = Promise.resolve(false);
 
   constructor(authModel: AuthModel) {
     this.authModel = authModel;
@@ -43,6 +46,8 @@ export class BridgeController {
   public handleAuthSession(session: AuthSession): void {
     if (!session || !session.token) return;
     this.authModel.setSession(session);
+    // Make the website login live in this app before listeners read the bank.
+    this.sessionReady = restoreWebSession(session);
     for (const listener of this.listeners) {
       try {
         listener(session);

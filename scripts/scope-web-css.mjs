@@ -55,6 +55,8 @@ function scope(css) {
       out += `${SCOPE} {\n  ${kept.join(';\n  ')};\n}\n`;
     } else if (prelude.startsWith('@media') || prelude.startsWith('@supports')) {
       out += `${prelude} {\n${scope(body)}}\n`;
+    } else if (prelude.startsWith('@view-transition')) {
+      // Cross-document navigation has no meaning inside the desktop app.
     } else if (prelude.startsWith('@')) {
       out += `${prelude} {${body}}\n`;
     } else if (prelude) {

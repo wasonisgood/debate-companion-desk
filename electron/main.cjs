@@ -144,12 +144,19 @@ function handleProtocolUrl(urlStr) {
     const token = parsed.searchParams.get('token');
     const userId = parsed.searchParams.get('userId') || parsed.searchParams.get('uid');
     const name = parsed.searchParams.get('name') || '研究員';
+    // Supabase session handed over from the website (see wasm_web debate module).
+    const accessToken = parsed.searchParams.get('access_token') || '';
+    const refreshToken = parsed.searchParams.get('refresh_token') || '';
+    const expiresAt = Number(parsed.searchParams.get('expires_at')) || 0;
 
     if (token) {
       const session = {
         userId: userId || 'researcher',
         userName: decodeURIComponent(name),
         token,
+        accessToken,
+        refreshToken,
+        expiresAt,
         authorizedAt: Date.now()
       };
 

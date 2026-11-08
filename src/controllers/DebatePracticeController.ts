@@ -15,7 +15,9 @@ import { TTSController } from './TTSController';
 import { BridgeController } from './BridgeController';
 
 import type { Side, CounselSeat, BenchQuestion, OralUnit, AuthSession } from '../types';
-import { followUpFor, type FollowUpResult } from '../services/DebateAIService';
+import { followUpFor, ensureDebateAI, type FollowUpResult } from '../services/DebateAIService';
+import { fetchDebateBank } from '../web/lib/debateStorage';
+import { syncFinishedSegments, type SyncSummary } from '../services/RecordingSync';
 
 export class DebatePracticeController {
   public debateModel: DebateModel;
@@ -68,20 +70,13 @@ export class DebatePracticeController {
       if (this.onAuthGranted) {
         this.onAuthGranted(session);
       }
-      // Asynchronously fetch debate bank without blocking instant UI auth transition
-      (async () => {
-        try {
-          const { SupabaseService } = await import('../services/SupabaseService');
-          const bank = await SupabaseService.getInstance().loadDebateBank();
-          if (bank && bank.data) {
-            this.debateModel.updateData(bank.data);
-            this.switchSide(this.settingsModel.getSettings().targetSide);
-          }
-        } catch (_) {}
-      })();
+      // Fetch the shared bank once the website session is active (no UI wait).
+      void this.bridgeController.sessionReady.then(() => ensureDebateAI(true)).then(() => this.refreshBank()).catch(() => {});
     });
 
     this.setupOrchestration();
+    // Activate Claude judging and record storage for whatever login is already stored.
+    void ensureDebateAI().then(() => this.refreshBank()).catch(() => {});
   }
 
   private setupOrchestration(): void {
@@ -107,6 +102,8 @@ export class DebatePracticeController {
         );
       }
     }
+
+    if (isFinal) this.recordingController.noteTranscript(transcript);
 
     // 2. Check for coach feedback transition ("老師講評")
     if (this.settingsModel.getSettings().enableFeedbackSegmentation) {
@@ -196,6 +193,63 @@ export class DebatePracticeController {
    * 即時追問: builds the follow-up from what the debater actually said (Claude when
    * available, rules engine otherwise). Returns null when there is no answer yet.
    */
+  private finishing: Promise<SyncSummary | null> | null = null;
+  /** Practice round counter shown in uploaded records (第 n 回合). */
+  public roundNumber = 1;
+
+  /** Start the next practice round: the next recording and records count from here. */
+  public startNewRound(): void {
+    this.roundNumber += 1;
+  }
+
+  /**
+   * Ends the current recording (round end, timer finished, or new round), uploads
+   * each segment with its audio, and returns the sync summary. Safe to call twice:
+   * concurrent calls share one run.
+   */
+  public finishRecording(): Promise<SyncSummary | null> {
+    if (this.finishing) return this.finishing;
+    if (!this.recordingController.isRecording()) return Promise.resolve(null);
+    const session = this.recordingModel.getCurrentSession();
+    const sessionId = session?.id ?? '';
+    const matchId = session?.matchId;
+    const side = session?.side ?? this.contextEngine.getSide();
+    const roundNo = this.roundNumber;
+    const sideLabel = side === 'prosecution' ? '控方' : '辯方';
+    this.finishing = (async () => {
+      try {
+        const items = await this.recordingController.stopRecording();
+        if (!items.length) return null;
+        return await syncFinishedSegments(items, {
+          side,
+          roundTitle: `${sideLabel} · 第 ${roundNo} 回合`,
+          sessionId,
+          matchId,
+        });
+      } finally {
+        this.finishing = null;
+      }
+    })();
+    return this.finishing;
+  }
+
+  /**
+   * Pull the shared bank through the website storage (same login and code rules).
+   * Returns true when a bank was loaded.
+   */
+  public async refreshBank(): Promise<boolean> {
+    try {
+      const bank = await fetchDebateBank(this.authModel.getDebateCode());
+      if (!bank?.data) return false;
+      this.debateModel.replaceFromBank(bank.data);
+      this.switchSide(this.settingsModel.getSettings().targetSide);
+      return true;
+    } catch (e) {
+      console.warn('Shared debate bank could not be loaded', e);
+      return false;
+    }
+  }
+
   public async triggerFollowUp(baseQuestion: BenchQuestion, spokenAnswer: string = this.lastFinalAnswer): Promise<FollowUpResult | null> {
     const answer = spokenAnswer.trim();
     if (!answer) return null;

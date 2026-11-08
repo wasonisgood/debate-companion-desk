@@ -7,73 +7,11 @@ export type Side = 'prosecution' | 'defense';
 export type CounselSeat = 1 | 2;
 export type InterruptionSensitivity = 'aggressive' | 'balanced' | 'conservative';
 
-export interface BenchQuestion {
-  id: string;
-  title: string;
-  side: Side;
-  category: string;
-  where: string;
-  whereZh: string;
-  issue: string;
-  questionEn: string;
-  questionZh: string;
-  simplified?: string;
-  followUp?: string;
-  followUpZh?: string;
-  structure: string[];
-  sampleEn: string;
-  sampleZh: string;
-  seat?: CounselSeat;
-  match?: string;
-}
-
-export interface OralUnit {
-  id: string;
-  side: Side;
-  speaker: string;
-  speakerId: 'yang' | 'chen';
-  section: string;
-  textEn: string;
-  notesZh: string;
-  qa?: string[];
-  seat?: CounselSeat;
-}
-
-export interface FollowUpExample {
-  title: string;
-  side: Side;
-  speaker: string;
-  dialogue: { role: 'judge' | 'counsel'; text: string }[];
-}
-
-export interface MatchPrep {
-  id: string;
-  matchNumber?: string;
-  side: Side;
-  opponentTeam?: string;
-  roundName?: string;
-  scheduledAt?: string;
-  notes?: string;
-  judgeNames?: string[];
-  focusQuestions?: string[];
-}
-
-export interface PrepMeta {
-  teamNumber?: string;
-  factsSummary?: string;
-  applicantMemorialOverview?: string;
-  respondentMemorialOverview?: string;
-}
-
-export interface DebateData {
-  prosecutionQuestions: BenchQuestion[];
-  defenseQuestions: BenchQuestion[];
-  prosecutionOral: OralUnit[];
-  defenseOral: OralUnit[];
-  followUpExamples: FollowUpExample[];
-  matches?: MatchPrep[];
-  prep?: PrepMeta;
-}
+// Debate data types are defined once, in the website debate module (src/web/lib),
+// so the desktop app and the website read and write the same shapes.
+export type { BenchQuestion, OralUnit, FollowUpExample } from '../web/lib/debateData';
+export type { MatchPrep, PrepMeta } from '../web/lib/matchPrep';
+export type { DebateData } from '../web/lib/debateStorage';
 
 export type RoadmapNodeStatus = 'pending' | 'active' | 'completed' | 'interrupted';
 
@@ -188,4 +126,8 @@ export interface AuthSession {
   token: string;
   role: string;
   authorizedAt: number;
+  /** Supabase session handed over by the website on authorization. */
+  accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: number;
 }

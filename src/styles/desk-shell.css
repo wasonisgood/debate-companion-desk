@@ -63,9 +63,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  min-height: 64px;
-  padding: 8px 4px;
+  gap: 3px;
+  min-height: 56px;
+  padding: 6px 4px;
   background: transparent;
   color: var(--ink-2);
   border: 1px solid transparent;
@@ -86,8 +86,8 @@
 .desk-glyph {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   border: 1px solid currentColor;
   border-radius: 50%;
   font-family: var(--serif);
@@ -182,5 +182,121 @@
   min-height: 0;
   overflow-y: auto;
   padding: 20px clamp(16px, 2.6vw, 36px) 32px;
+  box-sizing: border-box;
+}
+
+/* Workflow group labels in the rail (hidden on the bottom bar). */
+.desk-rail-group {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  color: var(--ink-3);
+  text-align: center;
+  padding: 8px 0 2px;
+  user-select: none;
+}
+
+/* 總覽: the researcher's desk. */
+.ov {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 980px;
+  margin: 0 auto;
+  width: 100%;
+}
+.ov-head h1 {
+  font-family: var(--serif);
+  font-size: var(--step-2);
+  font-weight: 700;
+  margin: 4px 0 6px;
+}
+.ov-kicker {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  color: var(--shu-ink);
+}
+.ov-sub { margin: 0; color: var(--ink-2); font-size: 0.92rem; }
+.ov-banner {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  background: var(--shu-wash);
+  border-left: 3px solid var(--shu);
+  font-size: 0.86rem;
+  color: var(--ink);
+}
+.ov-section {
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+.ov-section h2 {
+  font-family: var(--serif);
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 10px;
+  letter-spacing: 0.04em;
+}
+.ov-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ov-step {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+.ov-no {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--shu);
+  color: var(--shu-ink);
+  border-radius: 50%;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+.ov-step-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.ov-state { font-size: 0.86rem; color: var(--ink-2); }
+.ov-detail { margin: 2px 0 0; font-size: 0.84rem; color: var(--ink-3); line-height: 1.5; }
+.ov-go, .ov-primary {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ov-go:hover, .ov-primary:hover { background: var(--ink); color: var(--paper); }
+.ov-primary { background: var(--shu); border-color: var(--shu); color: #fff; }
+.ov-primary:hover { background: var(--shu-ink); border-color: var(--shu-ink); }
+.ov-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.ov-bank dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: 0.9rem; }
+.ov-bank dt { color: var(--ink-3); }
+.ov-bank dd { margin: 0; color: var(--ink); }
+.ov-live .ov-detail { margin-bottom: 12px; }
+
+@media (max-width: 760px) {
+  .desk-rail-group { display: none; }
+  .ov-row { grid-template-columns: minmax(0, 1fr); }
+  .ov-step { grid-template-columns: 30px minmax(0, 1fr); }
+  .ov-step .ov-go { grid-column: 1 / -1; width: 100%; }
+  #desk-overview, #desk-live { overflow-y: auto; }
+  #desk-overview { padding: 14px 16px 24px; box-sizing: border-box; }
+}
+
+#desk-overview {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 22px clamp(16px, 2.6vw, 36px) 32px;
   box-sizing: border-box;
 }
