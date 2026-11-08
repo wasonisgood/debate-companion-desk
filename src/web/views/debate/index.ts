@@ -128,7 +128,17 @@ export const debateView: View = async (root, { signal, url }) => {
     b.addEventListener('click', () => void show(b.dataset.tab!));
   });
   void show(initial);
-  signal.addEventListener('abort', () => { tabAbort?.abort(); if (typeof teardown === 'function') teardown(); }, { once: true });
+  // The desktop rail opens a specific tab (e.g. 對戰準備) without a page navigation.
+  const onOpenTab = (e: Event) => {
+    const key = (e as CustomEvent<string>).detail;
+    if (TABS.some(([k]) => k === key)) void show(key);
+  };
+  window.addEventListener('desk:debate-tab', onOpenTab);
+  signal.addEventListener('abort', () => {
+    window.removeEventListener('desk:debate-tab', onOpenTab);
+    tabAbort?.abort();
+    if (typeof teardown === 'function') teardown();
+  }, { once: true });
 };
 
 export default debateView;

@@ -1,47 +1,68 @@
 import '../styles/desk-shell.css';
 import { AppView } from './AppView';
+import { DeskOverview, type Destination } from './DeskOverview';
 import type { DebatePracticeController } from '../controllers/DebatePracticeController';
 import { debateView } from '../web/views/debate/index';
 
-type Mode = 'live' | 'debate';
+type Pane = 'overview' | 'live' | 'debate';
+
+/** Rail order follows the researcher's workflow, not the order features were built. */
+const GROUPS: { label: string; items: { tab?: string; pane?: Pane; name: string; glyph: string }[] }[] = [
+  { label: '總覽', items: [{ pane: 'overview', name: '研究台', glyph: '總' }] },
+  { label: '開庭', items: [{ pane: 'live', name: '即時陪練', glyph: '即' }] },
+  { label: '準備', items: [
+    { tab: 'prep', name: '對戰準備', glyph: '備' },
+    { tab: 'manage', name: '題庫稿件', glyph: '庫' },
+  ] },
+  { label: '練習', items: [
+    { tab: 'memorize', name: '口說教練', glyph: '說' },
+    { tab: 'bench', name: '單題攻防', glyph: '攻' },
+    { tab: 'simulation', name: '模擬庭', glyph: '模' },
+  ] },
+  { label: '檢討', items: [{ tab: 'records', name: '練習紀錄', glyph: '紀' }] },
+];
 
 /**
- * Top-level desktop frame. The left rail switches between the live-support
- * workspace (roadmap, script, question prompter, floating ball) and the moot
- * court practice module. Both panes stay mounted, so switching never drops a
- * running session, speech recognition or timer.
+ * Top-level desktop frame, ordered by the researcher's workflow:
+ * 總覽 (desk) → 開庭 (live) → 準備 → 練習 → 檢討. All panes stay mounted, so a
+ * running session, recognition or timer is not dropped when switching.
  */
 export class DeskShell {
   private root: HTMLElement;
   private controller: DebatePracticeController;
-  private mode: Mode = 'live';
+  private pane: Pane = 'overview';
+  private tab = 'prep';
   private debateStarted = false;
   private abort = new AbortController();
+  private overview!: DeskOverview;
+  private liveView!: AppView;
 
   constructor(root: HTMLElement, controller: DebatePracticeController) {
     this.root = root;
     this.controller = controller;
     this.render();
     this.bind();
-    this.show('live');
+    this.show('overview');
   }
 
   private render(): void {
+    const groups = GROUPS.map((g) => `
+          <div class="desk-rail-group" aria-hidden="true">${g.label}</div>
+          ${g.items.map((it) => `
+          <button class="desk-rail-item" type="button"
+            ${it.pane ? `data-pane="${it.pane}"` : `data-tab="${it.tab}"`}>
+            <span class="desk-glyph" aria-hidden="true">${it.glyph}</span>
+            <span class="desk-rail-label">${it.name}</span>
+          </button>`).join('')}`).join('');
+
     this.root.innerHTML = `
       <div class="desk-shell">
-        <nav class="desk-rail" aria-label="功能切換">
+        <nav class="desk-rail" aria-label="研究流程">
           <div class="desk-brand" data-drag>
             <span class="desk-seal" aria-hidden="true">辯</span>
             <span class="desk-brand-name">辯論台帳</span>
           </div>
-          <button class="desk-rail-item" data-mode="live" type="button">
-            <span class="desk-glyph" aria-hidden="true">即</span>
-            <span class="desk-rail-label">即時陪練</span>
-          </button>
-          <button class="desk-rail-item" data-mode="debate" type="button">
-            <span class="desk-glyph" aria-hidden="true">練</span>
-            <span class="desk-rail-label">模組練習</span>
-          </button>
+          ${groups}
           <div class="desk-rail-spacer" data-drag></div>
           <div class="desk-winctl" role="group" aria-label="視窗">
             <button type="button" data-win="minimize" aria-label="最小化" title="最小化">
@@ -56,19 +77,26 @@ export class DeskShell {
           </div>
         </nav>
         <main class="desk-main">
-          <section id="desk-live" class="desk-pane" aria-label="即時陪練"></section>
+          <section id="desk-overview" class="desk-pane" aria-label="研究台總覽" hidden></section>
+          <section id="desk-live" class="desk-pane" aria-label="即時陪練" hidden></section>
           <section id="desk-debate" class="desk-pane" aria-label="模組練習" hidden></section>
         </main>
       </div>`;
-    const live = this.root.querySelector<HTMLElement>('#desk-live')!;
-    this.liveView = new AppView(live, this.controller);
+
+    this.overview = new DeskOverview(
+      this.root.querySelector<HTMLElement>('#desk-overview')!,
+      this.controller,
+      (d) => this.go(d),
+    );
+    this.liveView = new AppView(this.root.querySelector<HTMLElement>('#desk-live')!, this.controller);
   }
 
-  private liveView!: AppView;
-
   private bind(): void {
-    this.root.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => {
-      b.addEventListener('click', () => this.show(b.dataset.mode as Mode));
+    this.root.querySelectorAll<HTMLButtonElement>('[data-pane]').forEach((b) => {
+      b.addEventListener('click', () => (b.dataset.pane === 'live' ? this.go({ mode: 'live' }) : this.show(b.dataset.pane as Pane)));
+    });
+    this.root.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) => {
+      b.addEventListener('click', () => this.go({ mode: 'debate', tab: b.dataset.tab! }));
     });
     this.root.querySelectorAll<HTMLButtonElement>('[data-win]').forEach((b) => {
       b.addEventListener('click', () => {
@@ -81,25 +109,48 @@ export class DeskShell {
     });
   }
 
-  private show(mode: Mode): void {
-    this.mode = mode;
-    this.root.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => {
-      const on = b.dataset.mode === mode;
+  /** Move to a workflow place. Used by the rail, the overview and the live panel. */
+  public go(dest: Destination): void {
+    if (dest.mode === 'live') this.show('live');
+    else this.openDebateTab(dest.tab);
+  }
+
+  private show(pane: Pane): void {
+    this.pane = pane;
+    const panes: Pane[] = ['overview', 'live', 'debate'];
+    panes.forEach((p) => {
+      const el = this.root.querySelector<HTMLElement>(`#desk-${p}`)!;
+      el.hidden = p !== pane;
+    });
+    if (pane === 'overview') this.overview.render();
+    this.markActive();
+  }
+
+  private openDebateTab(tab: string): void {
+    this.tab = tab;
+    const debate = this.root.querySelector<HTMLElement>('#desk-debate')!;
+    const wasHidden = debate.hidden;
+    this.show('debate');
+    if (!this.debateStarted) {
+      this.debateStarted = true;
+      void debateView(debate, { params: {}, signal: this.abort.signal, url: new URL(`desk://debate/?tab=${tab}`) });
+    } else if (wasHidden || this.pane === 'debate') {
+      window.dispatchEvent(new CustomEvent('desk:debate-tab', { detail: tab }));
+    }
+    this.markActive();
+  }
+
+  /** Highlight the rail item for the current place. */
+  private markActive(): void {
+    this.root.querySelectorAll<HTMLButtonElement>('.desk-rail-item').forEach((b) => {
+      const on = b.dataset.pane ? b.dataset.pane === this.pane : (this.pane === 'debate' && b.dataset.tab === this.tab);
       b.classList.toggle('active', on);
       if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
     });
-    const live = this.root.querySelector<HTMLElement>('#desk-live')!;
-    const debate = this.root.querySelector<HTMLElement>('#desk-debate')!;
-    live.hidden = mode !== 'live';
-    debate.hidden = mode !== 'debate';
-    if (mode === 'debate' && !this.debateStarted) {
-      this.debateStarted = true;
-      void debateView(debate, { params: {}, signal: this.abort.signal, url: new URL('desk://debate/') });
-    }
   }
 
-  /** Current top-level mode (for tests and the floating-mode layout). */
-  public currentMode(): Mode {
-    return this.mode;
+  /** Current top-level place (for tests and the floating-mode layout). */
+  public currentPane(): Pane {
+    return this.pane;
   }
 }
