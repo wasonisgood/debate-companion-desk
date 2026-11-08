@@ -409,9 +409,21 @@ export class AppView {
     this.roadmapView.render();
   }
 
-  private handleFollowUp(q: BenchQuestion): void {
-    const followUp = this.controller.triggerFollowUp(q, 'We argue that under Nicaragua effective control is satisfied.');
-    alert(`[即時追問建議]\n英文：${followUp.followUpEn}\n中文：${followUp.followUpZh}`);
+  private async handleFollowUp(q: BenchQuestion): Promise<void> {
+    const answer = this.controller.lastFinalAnswer.trim();
+    if (!answer) {
+      this.questionPrompterView.setLive({ status: 'empty' });
+      return;
+    }
+    this.questionPrompterView.setLive({ status: 'loading' });
+    try {
+      const r = await this.controller.triggerFollowUp(q, answer);
+      this.questionPrompterView.setLive(
+        r ? { status: 'ready', en: r.followUpEn, zh: r.followUpZh, engine: r.engine } : { status: 'empty' }
+      );
+    } catch (e: any) {
+      this.questionPrompterView.setLive({ status: 'error', error: e?.message ?? String(e) });
+    }
   }
 
   public startSpeechSimulation(): void {

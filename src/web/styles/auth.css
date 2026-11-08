@@ -1,0 +1,106 @@
+/* ---------- Shared login gate ---------- */
+.gate { max-width: 30rem; }
+.gate-tabs { display: flex; gap: 1.4rem; border-bottom: 1px solid var(--rule); margin: 2.2rem 0 1.4rem; }
+.gate-tabs button { all: unset; cursor: pointer; padding: .5rem 0; font-size: .95rem; color: var(--ink-3); position: relative; }
+.gate-tabs button[aria-selected="true"] { color: var(--ink); }
+.gate-tabs button[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; background: var(--shu); }
+.gate-tabs button:focus-visible { outline: 2px solid var(--shu); outline-offset: 2px; }
+.gate-pane { display: grid; gap: 1rem; margin-top: 1.2rem; }
+.gate-pane[hidden] { display: none; }
+.gate-act { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; margin: 0; }
+.gate-act a, .gate-act .mono { font-size: .78rem; }
+.gate-foot { font-size: .74rem; margin: 0; line-height: 1.6; }
+.gate-msg { font-size: .82rem; color: var(--shu); margin: 1.2rem 0 0; min-height: 1.2em; }
+.gate-code { font-family: var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+.gate-google { display: inline-flex; align-items: center; justify-content: center; gap: .6rem; width: 100%; }
+.gate-or { display: flex; align-items: center; gap: .8rem; font-size: .72rem; margin: 0; }
+.gate-or::before, .gate-or::after { content: ""; flex: 1; border-top: 1px solid var(--rule); }
+.gate-me { border: 1px solid var(--rule); padding: .9rem 1.1rem; margin-top: 2rem; display: grid; gap: .4rem; }
+.gate-me p { margin: 0; overflow-wrap: anywhere; }
+.gate-me .mono { font-size: .78rem; color: var(--ink-2); }
+.gate-mods { display: flex; flex-wrap: wrap; gap: .45rem 1rem; font-size: .9rem; color: var(--ink); }
+.gate-mods label { display: inline-flex; gap: .4rem; align-items: center; cursor: pointer; }
+.gate-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: .72rem;
+  line-height: 1.2;
+  padding: .2em .6em;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  white-space: nowrap;
+  vertical-align: middle;
+  letter-spacing: .03em;
+  transition: all .15s ease;
+}
+.gate-badge[data-s="owner"] { color: var(--paper); background: var(--ink); border-color: var(--ink); font-weight: 600; }
+.gate-badge[data-s="active"] { color: var(--koke); border-color: var(--koke); background: rgba(90, 122, 94, 0.08); font-weight: 500; }
+.gate-badge[data-s="pending"] { color: var(--ainezu); border-color: var(--ainezu); background: rgba(120, 135, 145, 0.08); }
+.gate-badge[data-s="suspended"], .gate-badge[data-s="banned"], .gate-badge[data-s="revoked"] { color: var(--shu); border-color: var(--shu); background: rgba(186, 68, 53, 0.08); }
+
+/* ---------- 後臺 → 帳號與代碼 ---------- */
+/* Section switcher: four cards, clearly different from the desk tabs above. */
+.ac-subs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .7rem; margin: -0.4rem 0 2rem; }
+@media (max-width: 860px) { .ac-subs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ac-subs a { display: grid; gap: .25rem; align-content: start; padding: .8rem .95rem .85rem; border: 1px solid var(--rule); color: var(--ink-2); text-decoration: none; background: var(--paper); transition: border-color .15s, background .15s; }
+.ac-subs a:hover { border-color: var(--ink-3); }
+.ac-subs a:focus-visible { outline: 2px solid var(--shu); outline-offset: 2px; }
+.ac-subs a b { font-size: 1.05rem; font-weight: 700; color: var(--ink); }
+.ac-subs .ac-sub-count { font-size: .72rem; color: var(--ink-3); }
+.ac-subs .ac-sub-count em { font-style: normal; color: var(--shu); font-weight: 500; }
+.ac-subs .ac-sub-hint { font-size: .78rem; line-height: 1.5; color: var(--ink-3); }
+.ac-subs a[aria-current="page"] { border-color: var(--ink); background: var(--paper-2); box-shadow: inset 0 -3px 0 var(--shu); }
+.ac-subs a[aria-current="page"] .ac-sub-hint { color: var(--ink-2); }
+.ac-list { display: grid; gap: 1.2rem; }
+.ac-card { border: 1px solid var(--rule); padding: 1rem 1.1rem 1.1rem; display: grid; gap: .9rem; }
+.ac-card[data-s="pending"] { border-color: var(--ainezu); }
+.ac-card[data-s="suspended"], .ac-card[data-s="banned"] { background: var(--paper-2); }
+.ac-card-head { display: flex; justify-content: space-between; gap: .6rem 1rem; flex-wrap: wrap; align-items: baseline; }
+.ac-card-head b { font-size: 1.05rem; }
+.ac-card-head .mono { font-size: .72rem; color: var(--ink-3); overflow-wrap: anywhere; }
+.ac-ask { font-size: .88rem; color: var(--ink-2); margin: 0; border-left: 2px solid var(--ainezu); padding-left: .7rem; white-space: pre-wrap; }
+.ac-grants { display: grid; gap: .5rem; }
+.ac-grant { display: grid; grid-template-columns: 11rem minmax(0, 1fr) 9.5rem; gap: .4rem .8rem; align-items: center; font-size: .88rem; }
+.ac-grant > label:first-child { display: inline-flex; gap: .45rem; align-items: center; cursor: pointer; color: var(--ink); }
+.ac-grant .ac-extra { display: flex; gap: .5rem; flex-wrap: wrap; }
+.ac-grant select, .ac-grant input[type=date] { font-size: .8rem; padding: .25em .4em; }
+@media (max-width: 640px) { .ac-grant { grid-template-columns: 1fr; } }
+.ac-actions { display: flex; gap: .55rem; align-items: center; flex-wrap: wrap; }
+.ac-actions .mono { font-size: .76rem; }
+.ac-form { border: 1px solid var(--rule); padding: 1rem 1.1rem; display: grid; gap: .9rem; margin-bottom: 2rem; }
+.ac-form .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .9rem; align-items: end; }
+@media (max-width: 760px) { .ac-form .grid3 { grid-template-columns: 1fr; } }
+.ac-code { font-family: var(--mono); letter-spacing: .06em; white-space: nowrap; }
+.ac-table td { font-size: .84rem; }
+.ac-table tr.off td { color: var(--ink-3); }
+.ac-table tr.off .ac-code { text-decoration: line-through; }
+.ac-fresh { border: 1px solid var(--koke); padding: .8rem 1rem; margin: 0 0 1.4rem; font-size: .86rem; }
+.ac-fresh pre { font: .82rem/1.7 var(--mono); margin: .4rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ac-form [hidden] { display: none; }
+.ac-edit-row td { background: var(--paper-2); }
+.ac-edit { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: .8rem 1rem; align-items: end; padding: .4rem 0; }
+.ac-edit .ac-actions { grid-column: 1 / -1; }
+.ac-edit select, .ac-edit input { font-size: .84rem; }
+#ac-body .desk-filters select { width: auto; }
+.ac-issue { margin: 0 0 1.6rem; }
+.ac-issue > summary { list-style: none; display: inline-flex; cursor: pointer; }
+.ac-issue > summary::-webkit-details-marker { display: none; }
+.ac-issue[open] > summary { margin-bottom: .9rem; background: var(--paper); color: var(--ink); border-color: var(--rule); }
+.ac-issue[open] > summary::after { content: "（收起）"; margin-left: .3em; color: var(--ink-3); }
+
+/* ---------- 帳號設定 /account ---------- */
+.acct { max-width: 40rem; }
+.acct .page-head .mono { font-size: .8rem; color: var(--ink-2); overflow-wrap: anywhere; }
+.acct-sec { margin-top: 2.4rem; display: grid; gap: .8rem; }
+.acct-sec > p { margin: 0; font-size: .9rem; }
+.acct-mods, .acct-ids { list-style: none; margin: 0; padding: 0; }
+.acct-mods li:last-child, .acct-ids li:last-child { border-bottom: 0; }
+.acct-mods li, .acct-ids li { display: grid; grid-template-columns: 11rem minmax(0, 1fr) auto; gap: .4rem 1rem; align-items: center; padding: .7rem 0; border-bottom: 1px solid var(--rule); }
+.acct-mods li:not(.on) b { color: var(--ink-3); font-weight: 500; }
+.acct-mods .mono, .acct-ids .mono { font-size: .76rem; overflow-wrap: anywhere; }
+.acct-mods a { font-size: .82rem; }
+@media (max-width: 560px) { .acct-mods li, .acct-ids li { grid-template-columns: 1fr auto; } .acct-mods li .mono, .acct-ids li .mono { grid-column: 1 / -1; grid-row: 2; } }
+.acct-form { display: grid; gap: 1rem; max-width: 24rem; }
+.acct-form [hidden] { display: none; }
+.acct-foot { margin-top: 2.6rem; }

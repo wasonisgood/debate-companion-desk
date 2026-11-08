@@ -7,11 +7,20 @@ export interface QuestionPrompterCallbacks {
   onSelectAlternativeQuestion: (qId: string) => void;
 }
 
+/** State of the live follow-up built from the debater's actual answer. */
+export type LiveFollowUpState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'empty' }
+  | { status: 'ready'; en: string; zh: string; engine: string }
+  | { status: 'error'; error: string };
+
 export class QuestionPrompterView {
   private container: HTMLElement;
   private currentQuestion: BenchQuestion | null = null;
   private allQuestions: BenchQuestion[] = [];
   private callbacks: QuestionPrompterCallbacks;
+  private live: LiveFollowUpState = { status: 'idle' };
 
   constructor(container: HTMLElement, callbacks: QuestionPrompterCallbacks) {
     this.container = container;
@@ -23,6 +32,29 @@ export class QuestionPrompterView {
     this.allQuestions = questions;
     this.currentQuestion = activeQuestion || questions[0] || null;
     this.render();
+  }
+
+  public setLive(state: LiveFollowUpState): void {
+    this.live = state;
+    this.render();
+  }
+
+  private liveCardHtml(): string {
+    const st = this.live;
+    let body = '';
+    if (st.status === 'idle') body = '<span class="live-muted">按「動態追問」，系統會依辯士剛剛的回答產生追問。</span>';
+    else if (st.status === 'loading') body = '<span class="live-muted">依辯士回答產生追問中…</span>';
+    else if (st.status === 'empty') body = '<span class="live-muted">尚未收到辯士的完整回答，請先讓辯士作答後再按一次。</span>';
+    else if (st.status === 'error') body = `<span class="live-error">無法產生追問：${st.error}</span>`;
+    else body = `
+          <div class="live-en">"${st.en}"</div>
+          <div class="live-zh">${st.zh}</div>
+          <div class="live-engine">來源：${st.engine}</div>`;
+    return `
+          <div class="card live-followup" aria-live="polite">
+            <span style="font-size: 0.75rem; font-family: var(--mono); color: var(--shu-ink); font-weight: bold;">即時追問（依辯士回答）</span>
+            ${body}
+          </div>`;
   }
 
   public setRecommendedQuestion(question: BenchQuestion): void {
@@ -107,6 +139,8 @@ export class QuestionPrompterView {
               ${q.followUpZh || '若辯士迴避，可直接追問其所依據之習慣國際法權威依據。'}
             </div>
           </div>
+
+          ${this.liveCardHtml()}
 
           <!-- Legal Structure Checklist -->
           <div class="card" style="gap: 0.4rem; padding: 0.85rem;">
