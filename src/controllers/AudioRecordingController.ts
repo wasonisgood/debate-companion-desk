@@ -1,11 +1,28 @@
 import { RecordingModel } from '../models/RecordingModel';
 import type { AudioSegment, Side, CounselSeat } from '../types';
 
+/** One encoded chunk from MediaRecorder, with the time it arrived. */
+interface TimedChunk { t: number; blob: Blob; }
+
+export interface FinishedSegment {
+  segment: AudioSegment;
+  /** Playable audio for this segment, or null when no microphone audio was captured. */
+  audio: Blob | null;
+  /** Final transcript lines spoken inside the segment's time window. */
+  transcript: string;
+}
+
+/**
+ * Records the practice session and cuts it into the segments the model defines
+ * (oral argument, coach feedback). Every chunk is timestamped so each segment can
+ * be rebuilt as its own audio file.
+ */
 export class AudioRecordingController {
   private model: RecordingModel;
   private mediaRecorder: any = null;
   private activeStream: any = null;
-  private audioChunks: Blob[] = [];
+  private chunks: TimedChunk[] = [];
+  private transcripts: { t: number; text: string }[] = [];
   private onSegmentCreated?: (seg: AudioSegment) => void;
 
   constructor(model?: RecordingModel) {
@@ -16,38 +33,38 @@ export class AudioRecordingController {
     this.onSegmentCreated = callback;
   }
 
+  public isRecording(): boolean {
+    return !!this.model.getCurrentSession()?.isRecording;
+  }
+
   public async startRecording(side: Side, seat?: CounselSeat, matchId?: string): Promise<boolean> {
+    this.model.startSession(side, seat, matchId);
+    this.chunks = [];
+    this.transcripts = [];
+    this.releaseStream();
     try {
-      this.model.startSession(side, seat, matchId);
-      this.audioChunks = [];
-
-      // Clean up any previously unclosed stream
-      if (this.activeStream) {
-        try {
-          this.activeStream.getTracks().forEach((track: any) => track.stop());
-        } catch (_) {}
-        this.activeStream = null;
-      }
-
-      if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         this.activeStream = stream;
         const RecorderClass = (window as any).MediaRecorder;
         if (RecorderClass) {
           this.mediaRecorder = new RecorderClass(stream);
           this.mediaRecorder.ondataavailable = (e: any) => {
-            if (e.data && e.data.size > 0) {
-              this.audioChunks.push(e.data);
-            }
+            if (e.data && e.data.size > 0) this.chunks.push({ t: Date.now(), blob: e.data });
           };
           this.mediaRecorder.start(1000);
         }
       }
-      return true;
-    } catch (_) {
-      // Graceful fallback for non-mic or testing environments
-      return true;
+    } catch (err) {
+      // No microphone (or denied): the session still tracks segments, just without audio.
+      console.warn('Recording without audio:', err);
     }
+    return true;
+  }
+
+  /** Keep a final transcript line so it can be attached to the segment it falls in. */
+  public noteTranscript(text: string, at: number = Date.now()): void {
+    if (text.trim()) this.transcripts.push({ t: at, text: text.trim() });
   }
 
   /**
@@ -76,30 +93,77 @@ export class AudioRecordingController {
     return false;
   }
 
-  public stopRecording(): AudioSegment[] {
-    if (this.mediaRecorder) {
-      try {
-        if (this.mediaRecorder.state !== 'inactive') {
-          this.mediaRecorder.stop();
-        }
-      } catch (_) {}
-      this.mediaRecorder.ondataavailable = null;
-      this.mediaRecorder = null;
-    }
+  /**
+   * Stops the recorder, waits for its last chunk, closes the session and returns
+   * every segment of that session with its own audio and transcript.
+   */
+  public async stopRecording(): Promise<FinishedSegment[]> {
+    const session = this.model.getCurrentSession();
+    if (!session || !session.isRecording) return [];
 
-    if (this.activeStream) {
-      try {
-        this.activeStream.getTracks().forEach((track: any) => track.stop());
-      } catch (_) {}
-      this.activeStream = null;
-    }
-
-    this.audioChunks = [];
+    await this.stopRecorder();
+    this.releaseStream();
+    const endedAt = Date.now();
     this.model.stopSession();
-    return this.model.getSyncQueue();
+
+    const out: FinishedSegment[] = session.segments.map((seg) => {
+      const end = seg.endTime ?? endedAt;
+      return {
+        segment: seg,
+        audio: this.audioFor(seg.startTime, end),
+        transcript: this.transcriptFor(seg.startTime, end),
+      };
+    });
+    this.model.clearSyncQueue();
+    this.chunks = [];
+    this.transcripts = [];
+    return out;
   }
 
   public getModel(): RecordingModel {
     return this.model;
+  }
+
+  /** Resolves when MediaRecorder has delivered its final chunk (or after a short timeout). */
+  private stopRecorder(): Promise<void> {
+    const rec = this.mediaRecorder;
+    this.mediaRecorder = null;
+    if (!rec) return Promise.resolve();
+    return new Promise((resolve) => {
+      const done = () => resolve();
+      rec.onstop = done;
+      try {
+        if (rec.state !== 'inactive') rec.stop();
+        else done();
+      } catch {
+        done();
+      }
+      setTimeout(done, 1500);
+    });
+  }
+
+  private releaseStream(): void {
+    if (this.activeStream) {
+      try { this.activeStream.getTracks().forEach((track: any) => track.stop()); } catch {}
+      this.activeStream = null;
+    }
+  }
+
+  /**
+   * Audio for [start, end]. MediaRecorder writes its container header only into the
+   * first chunk, so that chunk is prepended to every later segment to keep it playable.
+   */
+  private audioFor(start: number, end: number): Blob | null {
+    if (!this.chunks.length) return null;
+    const inside = this.chunks.filter((c) => c.t >= start - 1000 && c.t <= end + 1000);
+    if (!inside.length) return null;
+    const header = this.chunks[0];
+    const parts = inside[0] === header ? inside : [header, ...inside];
+    const type = parts[0].blob.type || 'audio/webm';
+    return new Blob(parts.map((c) => c.blob), { type });
+  }
+
+  private transcriptFor(start: number, end: number): string {
+    return this.transcripts.filter((x) => x.t >= start && x.t <= end).map((x) => x.text).join(' ');
   }
 }

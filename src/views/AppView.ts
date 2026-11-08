@@ -293,10 +293,22 @@ export class AppView {
     }
   }
 
-  private handleNewRound(): void {
+  /**
+   * New round: finish and upload the current recording first, then reset the timer.
+   * The next recording starts with the next speech, as it did before.
+   */
+  private async handleNewRound(): Promise<void> {
+    const summary = await this.controller.finishRecording();
+    this.controller.startNewRound();
     this.controller.timerController.reset();
-    this.controller.recordingModel.startSession(this.controller.contextEngine.getSide(), this.controller.contextEngine.getSeat());
-    this.titleBarView.setSyncStatus('新練習回合已建立', true);
+    this.titleBarView.setSyncStatus(this.summaryText(summary, '新練習回合已建立'), true);
+  }
+
+  private summaryText(summary: { saved: number; queued: number; failed: number } | null, fallback: string): string {
+    if (!summary) return fallback;
+    if (summary.failed) return `錄音上傳 ${summary.failed} 段失敗，請稍後再試`;
+    if (summary.queued) return `錄音已保存，${summary.queued} 段等待網路後上傳`;
+    return `錄音已保存至雲端（${summary.saved} 段）`;
   }
 
   private handleExportRecord(): void {
@@ -316,6 +328,12 @@ export class AppView {
   private bindControllerEvents(): void {
     // Timer subscription
     this.controller.timerController.subscribe((timerState) => {
+      // The round ends when the bell has rung for zero: finish and upload the recording.
+      if (timerState.isFinishedFired && this.controller.recordingController.isRecording()) {
+        void this.controller.finishRecording().then((summary) => {
+          this.titleBarView.setSyncStatus(this.summaryText(summary, '本回合錄音已結束'), true);
+        });
+      }
       const isRec = this.controller.recordingModel.getCurrentSession()?.isRecording || false;
       this.titleBarView.updateTimerDisplay(timerState.remainingSeconds, timerState.isRunning);
       this.floatingBallView.updateState(timerState.remainingSeconds, isRec, true);

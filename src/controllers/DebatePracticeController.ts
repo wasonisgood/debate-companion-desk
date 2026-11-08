@@ -17,6 +17,7 @@ import { BridgeController } from './BridgeController';
 import type { Side, CounselSeat, BenchQuestion, OralUnit, AuthSession } from '../types';
 import { followUpFor, type FollowUpResult } from '../services/DebateAIService';
 import { fetchDebateBank } from '../web/lib/debateStorage';
+import { syncFinishedSegments, type SyncSummary } from '../services/RecordingSync';
 
 export class DebatePracticeController {
   public debateModel: DebateModel;
@@ -99,6 +100,8 @@ export class DebatePracticeController {
         );
       }
     }
+
+    if (isFinal) this.recordingController.noteTranscript(transcript);
 
     // 2. Check for coach feedback transition ("老師講評")
     if (this.settingsModel.getSettings().enableFeedbackSegmentation) {
@@ -188,6 +191,46 @@ export class DebatePracticeController {
    * 即時追問: builds the follow-up from what the debater actually said (Claude when
    * available, rules engine otherwise). Returns null when there is no answer yet.
    */
+  private finishing: Promise<SyncSummary | null> | null = null;
+  /** Practice round counter shown in uploaded records (第 n 回合). */
+  public roundNumber = 1;
+
+  /** Start the next practice round: the next recording and records count from here. */
+  public startNewRound(): void {
+    this.roundNumber += 1;
+  }
+
+  /**
+   * Ends the current recording (round end, timer finished, or new round), uploads
+   * each segment with its audio, and returns the sync summary. Safe to call twice:
+   * concurrent calls share one run.
+   */
+  public finishRecording(): Promise<SyncSummary | null> {
+    if (this.finishing) return this.finishing;
+    if (!this.recordingController.isRecording()) return Promise.resolve(null);
+    const session = this.recordingModel.getCurrentSession();
+    const sessionId = session?.id ?? '';
+    const matchId = session?.matchId;
+    const side = session?.side ?? this.contextEngine.getSide();
+    const roundNo = this.roundNumber;
+    const sideLabel = side === 'prosecution' ? '控方' : '辯方';
+    this.finishing = (async () => {
+      try {
+        const items = await this.recordingController.stopRecording();
+        if (!items.length) return null;
+        return await syncFinishedSegments(items, {
+          side,
+          roundTitle: `${sideLabel} · 第 ${roundNo} 回合`,
+          sessionId,
+          matchId,
+        });
+      } finally {
+        this.finishing = null;
+      }
+    })();
+    return this.finishing;
+  }
+
   /**
    * Pull the shared bank through the website storage (same login and code rules).
    * Returns true when a bank was loaded.
