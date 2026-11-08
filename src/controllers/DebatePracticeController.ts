@@ -15,6 +15,7 @@ import { TTSController } from './TTSController';
 import { BridgeController } from './BridgeController';
 
 import type { Side, CounselSeat, BenchQuestion, OralUnit, AuthSession } from '../types';
+import { followUpFor, type FollowUpResult } from '../services/DebateAIService';
 
 export class DebatePracticeController {
   public debateModel: DebateModel;
@@ -32,6 +33,9 @@ export class DebatePracticeController {
   public speechController: SpeechRecognitionController;
   public ttsController: TTSController;
   public bridgeController: BridgeController;
+
+  /** The debater's latest finished answer, used as the basis for a follow-up. */
+  public lastFinalAnswer: string = '';
 
   public onPopoutTrigger?: (q: BenchQuestion, reason: string) => void;
   public onStateChanged?: () => void;
@@ -117,8 +121,10 @@ export class DebatePracticeController {
     const alignResult = this.alignmentController.alignSpeech(transcript);
 
     // 4. Generate real-time simplified Chinese summary entry
-    if (isFinal && this.settingsModel.getSettings().showLiveChineseSummary && alignResult.currentUnitId) {
-      this.questionBankModel.addChineseSummary(alignResult.currentUnitId, transcript);
+    if (isFinal) this.lastFinalAnswer = transcript;
+    const currentUnit = alignResult.currentUnitId ? this.debateModel.findOralUnitById(alignResult.currentUnitId) : undefined;
+    if (isFinal && this.settingsModel.getSettings().showLiveChineseSummary && currentUnit) {
+      this.questionBankModel.addChineseSummary(currentUnit, transcript);
     }
 
     // 5. Dynamic AI Timing Judgment for Bench Interruption (交由 AI 實時動態裁定最佳提問時機)
@@ -186,7 +192,13 @@ export class DebatePracticeController {
     }
   }
 
-  public triggerFollowUp(baseQuestion: BenchQuestion, spokenAnswer: string): { followUpEn: string; followUpZh: string } {
-    return this.questionBankModel.generateDynamicFollowUp(spokenAnswer, baseQuestion);
+  /**
+   * 即時追問: builds the follow-up from what the debater actually said (Claude when
+   * available, rules engine otherwise). Returns null when there is no answer yet.
+   */
+  public async triggerFollowUp(baseQuestion: BenchQuestion, spokenAnswer: string = this.lastFinalAnswer): Promise<FollowUpResult | null> {
+    const answer = spokenAnswer.trim();
+    if (!answer) return null;
+    return followUpFor(baseQuestion, answer);
   }
 }
