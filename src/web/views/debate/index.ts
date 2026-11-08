@@ -6,9 +6,10 @@ import { fetchDebateBank, type Bank } from '../../lib/debateStorage';
 import { initDebateAI } from '../../lib/debateAI';
 import { initRecords } from '../../lib/debateRecords';
 import { preloadIfNeeded } from '../../lib/stt';
-import '../../styles/prep.css';
-import '../../styles/debate.css';
-import '../../styles/moot.css';
+import '../../styles/scoped/base.css';
+import '../../styles/scoped/prep.css';
+import '../../styles/scoped/debate.css';
+import '../../styles/scoped/moot.css';
 
 export type DebateTab = (el: HTMLElement, signal: AbortSignal) => Cleanup | Promise<Cleanup>;
 

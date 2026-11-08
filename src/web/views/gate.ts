@@ -10,7 +10,7 @@ import {
   me, hasModule, signInPassword, signUp, signInGoogle, resetPassword, signOut, requestAccess, redeem,
   stashCode, MODULES, MODULE_KEYS, STATUS, type Module, type Me,
 } from '../lib/auth';
-import '../styles/auth.css';
+import '../styles/scoped/auth.css';
 
 export interface GateOpts {
   module: Module;

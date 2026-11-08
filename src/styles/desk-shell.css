@@ -175,3 +175,12 @@
     scroll-snap-align: start;
   }
 }
+
+/* Hosts the ported website debate module: scrolls inside the pane, keeps a gutter. */
+#desk-debate {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px clamp(16px, 2.6vw, 36px) 32px;
+  box-sizing: border-box;
+}
