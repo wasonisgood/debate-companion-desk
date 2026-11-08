@@ -1,10 +1,10 @@
 import type { View, Cleanup } from '../../main';
 import { html, raw, $ } from '../../lib/dom';
-import { me, hasModule, savedCode, saveCode, codeStillValid, codeLogin, takeCodeParam, type Me } from '../../lib/auth';
+import { me, hasModule, savedCode, saveCode, codeStillValid, codeLogin, signOut, takeCodeParam, type Me } from '../../lib/auth';
 import { gate } from '../gate';
 import { fetchDebateBank, type Bank } from '../../lib/debateStorage';
 import { initDebateAI } from '../../lib/debateAI';
-import { initRecords, pendingCount } from '../../lib/debateRecords';
+import { initRecords } from '../../lib/debateRecords';
 import { preloadIfNeeded } from '../../lib/stt';
 import '../../styles/prep.css';
 import '../../styles/debate.css';
@@ -24,7 +24,8 @@ export const TABS: [string, string, () => Promise<{ default: DebateTab }>][] = [
 
 /**
  * Mounts the debate module into `root`. Signing in / redeeming a code is the same
- * gate the website uses, so the same accounts and grants apply.
+ * gate the website uses, so the same accounts and grants apply. Tabs switch in
+ * place: the desktop app has no address bar to navigate.
  */
 export const debateView: View = async (root, { signal, url }) => {
   if (signal.aborted) return;
@@ -69,33 +70,64 @@ export const debateView: View = async (root, { signal, url }) => {
   initRecords(via === 'account' ? account : null, via === 'code' ? savedCode('debate') : '', !!bank?.can_manage);
   if (signal.aborted) return;
 
-  const tabParam = url.searchParams.get('tab') ?? 'memorize';
-  const currentTab = TABS.some(([k]) => k === tabParam) ? tabParam : 'memorize';
-  const [, label, load] = TABS.find(([k]) => k === currentTab)!;
   const who = via === 'account' ? (account!.display_name || account!.email) : `通行碼 ${savedCode('debate')}`;
+  const initial = TABS.some(([k]) => k === url.searchParams.get('tab')) ? url.searchParams.get('tab')! : 'memorize';
 
   root.innerHTML = html`
     <header class="desk-head">
       <div>
         <span class="kicker">IHL Moot Court Drill · 2026-2027</span>
-        <h1>辯論比賽練習模組 · ${label}</h1>
+        <h1 id="debate-tab-title"></h1>
       </div>
-      <p class="mono dim">${who} · <a href="#" id="lock-debate">${via === 'account' ? '登出' : '鎖定離開'}</a></p>
+      <p class="mono dim">${who} · <button class="linkish" id="lock-debate" type="button">${via === 'account' ? '登出' : '鎖定離開'}</button></p>
     </header>
     <nav class="desk-tabs" aria-label="辯論比賽練習模組導航">
-      ${TABS.map(([k, l]) => raw(html`<a href="?tab=${k}" data-tab="${k}" ${k === currentTab ? raw('aria-current="page"') : ''}>${l}</a>`))}
+      ${TABS.map(([k, l]) => raw(html`<button type="button" class="desk-tab" data-tab="${k}">${l}</button>`))}
     </nav>
     ${bankErr || (bank && !bank.data)
       ? raw(html`<p class="debate-bank-note mono">${bankErr ? bankErr : '題庫尚未發布或為空，請稍後再來或聯絡管理者。'}</p>`)
       : ''}
-    <div id="debate-body"><p class="loading">模組載入中……</p></div>
+    <div id="debate-body" class="debate-body"><p class="loading">模組載入中……</p></div>
   `;
-  void pendingCount;
-  const body = $('#debate-body', root);
-  const mod = await load();
-  if (signal.aborted) return;
-  body.replaceChildren();
-  return mod.default(body, signal);
+
+  $('#lock-debate', root)?.addEventListener('click', async () => {
+    if (via === 'account') await signOut();
+    else saveCode('debate', '');
+    void debateView(root, { params: {}, signal, url: new URL(url.href) });
+  });
+
+  let teardown: Cleanup | null = null;
+  let tabAbort: AbortController | null = null;
+  let token = 0;
+  const show = async (key: string) => {
+    const mine = ++token;
+    tabAbort?.abort();
+    if (typeof teardown === 'function') teardown();
+    teardown = null;
+    const entry = TABS.find(([k]) => k === key) ?? TABS[0];
+    root.querySelectorAll<HTMLButtonElement>('.desk-tab').forEach((b) => {
+      const on = b.dataset.tab === entry[0];
+      b.classList.toggle('active', on);
+      if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+    $('#debate-tab-title', root)!.textContent = `辯論比賽練習模組 · ${entry[1]}`;
+    const body = $('#debate-body', root)!;
+    body.innerHTML = '<p class="loading">模組載入中……</p>';
+    const ctl = new AbortController();
+    tabAbort = ctl;
+    const onAbort = () => ctl.abort();
+    signal.addEventListener('abort', onAbort, { once: true });
+    const mod = await entry[2]();
+    if (mine !== token || ctl.signal.aborted) return;
+    body.replaceChildren();
+    const out = await mod.default(body, ctl.signal);
+    if (mine === token) teardown = out ?? null;
+  };
+  root.querySelectorAll<HTMLButtonElement>('.desk-tab').forEach((b) => {
+    b.addEventListener('click', () => void show(b.dataset.tab!));
+  });
+  void show(initial);
+  signal.addEventListener('abort', () => { tabAbort?.abort(); if (typeof teardown === 'function') teardown(); }, { once: true });
 };
 
 export default debateView;
