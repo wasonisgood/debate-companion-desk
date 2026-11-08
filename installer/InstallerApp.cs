@@ -917,12 +917,16 @@ namespace DebateCompanionInstaller {
             txtProgressTitle.Text = (currentLang == "en") ? "Deploying Debate Companion…" : "正在部署 模擬庭提問陪伴台帳…";
             txtProgressStatus.Text = (currentLang == "en") ? "Preparing target environment…" : "正在準備安裝環境…";
 
+            // WPF 控制項只能在 UI 執行緒存取，因此在進入背景工作前先取出勾選狀態
+            bool wantDesktop = chkDesktop.IsChecked == true;
+            bool wantStartMenu = chkStartMenu.IsChecked == true;
+
             bool ok = false;
             string exMsg = null;
             await Task.Run(() => {
                 try {
                     StopRunningApp();
-                    InstallCore(targetDir, (pct, status) => {
+                    InstallCore(targetDir, wantDesktop, wantStartMenu, (pct, status) => {
                         Dispatcher.Invoke(() => {
                             prgBar.Value = pct;
                             txtProgressPct.Text = pct + "%";
@@ -978,7 +982,8 @@ namespace DebateCompanionInstaller {
             };
         }
 
-        private void InstallCore(string targetDir, Action<int, string> report) {
+        // 注意：此方法在背景執行緒執行，不可存取任何 WPF 控制項（如 chkDesktop），只能使用參數傳入的值
+        private void InstallCore(string targetDir, bool wantDesktop, bool wantStartMenu, Action<int, string> report) {
             bool en = currentLang == "en";
             report(10, en ? "Extracting application payload…" : "正在解壓縮應用程式核心組件…");
             Directory.CreateDirectory(targetDir);
@@ -1050,14 +1055,14 @@ namespace DebateCompanionInstaller {
             string exePath = GetMainExePath(targetDir);
 
             // 4. 捷徑建立
-            if (chkDesktop.IsChecked == true) {
+            if (wantDesktop) {
                 try {
                     string desktopDir = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
                     CreateShortcut(Path.Combine(desktopDir, "模擬庭提問陪伴台帳.lnk"), exePath, targetDir, "模擬庭提問陪伴台帳");
                 } catch { }
             }
 
-            if (chkStartMenu.IsChecked == true) {
+            if (wantStartMenu) {
                 try {
                     string startDir = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
                     CreateShortcut(Path.Combine(startDir, "模擬庭提問陪伴台帳.lnk"), exePath, targetDir, "模擬庭提問陪伴台帳");
