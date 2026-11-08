@@ -1,21 +1,16 @@
 import { SITE_ORIGIN } from '../config';
 /**
- * Which AI judges the debate practice, and the call to Claude.
+ * Which AI judges the debate practice.
  *
- *   claude  Claude through /api/debate-ai (keys and budgets managed in 後臺).
- *           Default for Google accounts when the admin has it switched on.
- *   local   the model set on the /llm page (Ollama, OpenAI-compatible,
- *           WebGPU, Chrome built-in).
- *   rules   the offline rule engine — always there as the last fallback.
+ *   claude  Claude through /api/debate-ai (keys and budgets managed on the server).
+ *   rules   the offline rule engine, used whenever Claude is not available.
  *
- * The person can override the choice; it is remembered on this device.
+ * There is no engine picker: Claude when the server allows it, rules otherwise.
  */
 import { db } from './db';
 import type { Me } from './auth';
-import { loadSettings } from '../llm/backends';
 
-export type EnginePref = 'auto' | 'claude' | 'local' | 'rules';
-export type Engine = 'claude' | 'local' | 'rules';
+export type Engine = 'claude' | 'rules';
 export type AiTask = 'followup' | 'evaluate' | 'hearing' | 'prep' | 'rebut' | 'gen';
 
 export interface AiConfig {
@@ -33,7 +28,6 @@ export const MODEL_LABEL: Record<string, string> = {
   'claude-opus-5-5': 'Claude Opus 5.5',
 };
 
-const PREF_KEY = 'debate_ai_engine_v1';
 const CACHE_KEY = 'debate_ai_cache_v1';
 const CACHE_MAX = 120;
 
@@ -67,28 +61,6 @@ export async function initDebateAI(account: Me | null): Promise<void> {
   }
 }
 
-export function enginePref(): EnginePref {
-  try {
-    const v = localStorage.getItem(PREF_KEY) as EnginePref | null;
-    return v && ['auto', 'claude', 'local', 'rules'].includes(v) ? v : 'auto';
-  } catch {
-    return 'auto';
-  }
-}
-export function setEnginePref(p: EnginePref) {
-  try {
-    localStorage.setItem(PREF_KEY, p);
-  } catch {}
-}
-
-export function localLLMReady(): boolean {
-  const s = loadSettings();
-  return (
-    (s.backend === 'builtin' && typeof (globalThis as any).LanguageModel !== 'undefined') ||
-    (Boolean(s.model) && (s.backend === 'ollama' || s.backend === 'openai' || s.backend === 'webgpu'))
-  );
-}
-
 /** Could this person use Claude at all right now? '' = yes, otherwise why not. */
 export function claudeBlocker(): string {
   if (!ctx.account) return '用通行碼進來時無法使用 Claude，請改用帳號登入。';
@@ -99,24 +71,11 @@ export function claudeBlocker(): string {
 }
 
 export function resolveEngine(): Engine {
-  const pref = enginePref();
-  const claudeOk = !claudeBlocker();
-  if (pref === 'claude' && claudeOk) return 'claude';
-  if (pref === 'rules') return 'rules';
-  if (pref === 'local') return localLLMReady() ? 'local' : 'rules';
-  if (pref === 'auto' && claudeOk && ctx.google && ctx.config?.google_default) return 'claude';
-  // explicit Claude that is unavailable, or auto for non-Google: best local option
-  if (localLLMReady()) return 'local';
-  if (pref === 'auto' && claudeOk) return 'claude';
-  return 'rules';
+  return claudeBlocker() ? 'rules' : 'claude';
 }
 
 export function engineDescription(e: Engine = resolveEngine(), task: AiTask = 'evaluate'): string {
   if (e === 'claude') return `${MODEL_LABEL[ctx.config?.models?.[task] ?? ''] ?? 'Claude'}（雲端）`;
-  if (e === 'local') {
-    const s = loadSettings();
-    return s.backend === 'builtin' ? '瀏覽器內建模型（Prompt API）' : `${s.backend.toUpperCase()} · ${s.model}`;
-  }
   return '離線規則引擎';
 }
 
@@ -152,7 +111,7 @@ function writeCache(c: Record<string, { at: number; v: ClaudeResult<unknown> }>)
 /**
  * Ask Claude. Grading results are cached on this device by exact input, so
  * re-opening a report or re-scoring the same transcript costs nothing.
- * Throws when Claude is unavailable; callers fall back to local / rules.
+ * Throws when Claude is unavailable; callers fall back to the rules engine.
  */
 export async function callClaude<T>(task: AiTask, input: unknown, signal?: AbortSignal): Promise<ClaudeResult<T>> {
   const why = claudeBlocker();

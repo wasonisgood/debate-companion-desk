@@ -24,8 +24,7 @@ import type { DebateData } from './debateStorage';
 import type { BenchQuestion, OralUnit } from './debateData';
 import { type Block, blocksText } from './docx';
 import { cleanScript, loadMastery, saveMastery, oralOf, questionsOf, seatOf, shortSection, wordsCount, estimateSec, SEAT_INFO, type Side } from './mootCourt';
-import { callClaude, resolveEngine, localLLMReady } from './debateAI';
-import { loadSettings, streamChat, type Msg } from '../llm/backends';
+import { callClaude, resolveEngine } from './debateAI';
 
 export type Source = 'word' | 'ai' | 'auto' | 'me';
 export type Level = '高' | '中高' | '中' | '低';
@@ -536,20 +535,8 @@ export function prepInput(d: DebateData, m: MatchPrep, step: PrepStep) {
   };
 }
 
-function localPrompt(input: ReturnType<typeof prepInput>): Msg[] {
-  const want: Record<PrepStep, string> = {
-    read: '{"summary":[..3 條核心結論],"claims":[{"issue","claim","paras","predict"(英文，對方在庭上可能的說法),"strength":"strong|medium|weak"}],"admissions":[{"text","paras","use"}],"gaps":[..]}',
-    assess: '{"pros":[{"point","basis","use"}],"cons":[{"risk","detail","level":"高|中高|中|低","response"}],"priorities":[..],"verify":[..]}',
-    script: '{"directions":[..],"fixes":[{"unit","where","current"(逐字複製我方稿件原文),"problem","suggest","replacement"(英文替換句)}],"additions":[..],"attacks":[{"claim","response","cite"}],"timing":[{"part","minutes","focus"}],"rebuttal":[..],"reminders":[..]}',
-    qa: '{"qa":[{"question"(英文法官問句),"questionZh","answer"(中文重點),"avoid","structure":[..英文],"sampleEn"}]}',
-  };
-  return [
-    { role: 'system', content: '你是國際人道法模擬法庭（ICC 規約，Prosecutor v. Roger Thorn）隊伍的教練。只依提供的書狀、事實與我方稿件分析，不得捏造事實或段落號。用繁體中文（台灣用語）寫分析，英文保留給法律名詞與要在庭上說的句子。只輸出 JSON。' },
-    { role: 'user', content: `任務：${input.step}\n我方：${input.ourSide}\n場次：${input.match}\n\n對方書狀：\n${input.memorial.slice(0, 14_000)}\n\n${input.script ? `我方稿件：\n${input.script.slice(0, 12_000)}\n\n` : ''}${input.known ? `已知：${input.known}\n\n` : ''}輸出格式：${want[input.step]}` },
-  ];
-}
 
-/** Claude → local model → error. Returns the step's JSON and which engine made it. */
+/** Claude → error. Returns the step's JSON and which engine made it. */
 export async function runPrepAI(d: DebateData, m: MatchPrep, step: PrepStep, signal?: AbortSignal): Promise<{ data: AiOut; engine: string; cost?: number }> {
   if (!m.memorial && step !== 'script') throw new Error('先匯入對方書狀。');
   const input = prepInput(d, m, step);
@@ -561,13 +548,7 @@ export async function runPrepAI(d: DebateData, m: MatchPrep, step: PrepStep, sig
       return { data: r.data, engine: `${r.model}${r.cached ? '（快取）' : ''}`, cost: r.usage.cost };
     } catch (e: any) { lastErr = e?.message ?? String(e); }
   }
-  if (localLLMReady() && engine !== 'rules') {
-    let text = '';
-    for await (const c of streamChat(loadSettings(), localPrompt(input), signal ?? new AbortController().signal)) text += c;
-    const j = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
-    try { return { data: JSON.parse(j), engine: '本地模型' }; } catch { lastErr = '本地模型回覆不是有效的 JSON。'; }
-  }
-  throw new Error(lastErr || '目前沒有可用的 AI（請用帳號登入使用 Claude，或在「本地模型」頁設定模型）。離線比對結果仍可使用。');
+  throw new Error(lastErr || '目前無法使用 Claude（需要帳號登入並由管理者開通）。離線比對結果仍可使用。');
 }
 
 /** Merge a step's AI output into the match without duplicating what is there. */

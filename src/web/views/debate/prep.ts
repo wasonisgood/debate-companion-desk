@@ -271,7 +271,7 @@ export default function renderPrep(container: HTMLElement, signal: AbortSignal) 
     const need = s !== 'script' && !m.memorial;
     return html`<div class="prep-ai">
       <button class="btn primary small" data-ai="${s}" ${busy || !can || need ? raw('disabled') : ''}>${busy === s ? 'AI 分析中…' : label}</button>
-      <span class="mono dim">${need ? '先在「1 書狀」匯入對方書狀' : can ? `${engineDescription(eng, 'evaluate').replace(/（雲端）$/, '')} · ${what}${prepMeta(data).facts ? '' : ' · 建議先匯入事實段，AI 才能引用事實段號'}` : '沒有可用的 AI：用帳號登入使用 Claude，或在「本地模型」頁設定。仍可匯入 Word 分析或自行填寫。'}</span>
+      <span class="mono dim">${need ? '先在「1 書狀」匯入對方書狀' : can ? `${engineDescription(eng, 'evaluate').replace(/（雲端）$/, '')} · ${what}${prepMeta(data).facts ? '' : ' · 建議先匯入事實段，AI 才能引用事實段號'}` : '沒有可用的 AI：需要帳號登入並由管理者開通 Claude。仍可匯入 Word 分析或自行填寫。'}</span>
     </div>`;
   }
 

@@ -4,8 +4,7 @@
  */
 
 import { type BenchQuestion } from './debateData';
-import { loadSettings, streamChat, type Msg } from '../llm/backends';
-import { callClaude, engineDescription, localLLMReady, resolveEngine, type Engine } from './debateAI';
+import { callClaude, engineDescription, resolveEngine, type Engine } from './debateAI';
 
 export interface EvaluationResult {
   totalScore: number; // 0 - 100
@@ -34,7 +33,7 @@ export function getJudgeEngineStatus(): { isLocalLLM: boolean; engine: Engine; d
     isLocalLLM: engine !== 'rules',
     engine,
     description: engineDescription(engine),
-    backend: engine === 'local' ? loadSettings().backend : engine,
+    backend: engine,
   };
 }
 
@@ -105,8 +104,8 @@ export function analyzeSpeechFluency(
 
 /**
  * Generate a follow-up question based on the debater's actual answer.
- * Claude → local model → rule engine. Returns bilingual text for the local
- * and rule paths; Claude returns the English question only (it is spoken).
+ * Claude → rule engine. Claude returns the English question only (it is spoken);
+ * the rule path returns bilingual text.
  */
 export async function generateFollowUpQuestion(
   q: BenchQuestion,
@@ -123,46 +122,6 @@ export async function generateFollowUpQuestion(
       console.info('Claude follow-up unavailable, falling back', e);
     }
   }
-  if (localLLMReady() && engine !== 'rules') {
-    const settings = loadSettings();
-    try {
-      const messages: Msg[] = [
-        {
-          role: 'system',
-          content: `You are a stern, authoritative judge at the International Criminal Court (ICC) Moot Court competition (Prosecutor v. Roger Thorn).
-Ask ONE sharp, direct follow-up question strictly in English.
-Requirements:
-1. Speak in authoritative judicial English starting with "Counsel, ".
-2. Press directly on the unproven elements, factual loopholes, or logical fallacies in the debater's immediate oral answer.
-3. Output STRICTLY the English question (1-2 sentences, max 40 words).
-4. Strictly NO Chinese characters, prefixes, or bilingual explanations.`,
-        },
-        {
-          role: 'user',
-          content: `Original Question (${q.id}):
-${q.questionEn}
-Issue: ${q.issue}
-
-Debater's Immediate Oral Answer:
-"${debaterAnswer}"
-
-Provide your judicial follow-up question in English:`,
-        },
-      ];
-
-      let result = '';
-      for await (const chunk of streamChat(settings, messages, signal ?? new AbortController().signal)) {
-        result += chunk;
-      }
-      if (result.trim()) {
-        const cleaned = result.trim().replace(/^["“]|["”]$/g, '').replace(/[\u4e00-\u9fa5].*$/s, '').trim();
-        if (cleaned) return cleaned.startsWith('Counsel') ? cleaned : `Counsel, ${cleaned}`;
-      }
-    } catch (e) {
-      console.warn('LLM stream error, falling back to heuristic engine', e);
-    }
-  }
-
   // Built-in intelligent moot judge follow-up fallback
   return getHeuristicFollowUp(q, debaterAnswer);
 }
@@ -216,10 +175,8 @@ export async function evaluateAnswer(
   extra?: { firstAnswer?: string; followUp?: string; followAnswer?: string },
 ): Promise<EvaluationResult> {
   const fluency = analyzeSpeechFluency(answer, metrics);
-  const settings = loadSettings();
   const engine = resolveEngine();
   const enough = wordCount(answer) >= MIN_AI_WORDS;
-  const hasLocalLLM = engine !== 'rules' && enough && localLLMReady();
   let engineName = '';
 
   let legalScore = 20;
@@ -273,56 +230,6 @@ export async function evaluateAnswer(
       engineName = `${engineDescription('claude')}${r.cached ? ' · 快取' : ''}`;
     } catch (e) {
       console.info('Claude grading unavailable, falling back', e);
-    }
-  }
-
-  if (!summary && hasLocalLLM) {
-    try {
-      const messages: Msg[] = [
-        {
-          role: 'system',
-          content: `你是一名資深國際人道法（IHL）模擬法庭總裁判長。
-請依據評分規準對選手的即時答辯進行專業評分，輸出 JSON 格式：
-{
-  "legalScore": 0-25之間的整數,
-  "directScore": 0-25之間的整數,
-  "strategyScore": 0-25之間的整數,
-  "strengths": ["優點1", "優點2"],
-  "improvements": ["改進建議1", "改進建議2"],
-  "legalCritique": "法理涵攝詳細講評",
-  "summary": "一句話裁判總評"
-}`,
-        },
-        {
-          role: 'user',
-          content: `題目（${q.id}）：${q.questionEn}
-中文題意：${q.questionZh}
-核心爭點：${q.issue}
-官方回答架構：${q.structure.join(' / ')}
-選手答辯內容：
-"${answer}"`,
-        },
-      ];
-
-      let rawJson = '';
-      for await (const chunk of streamChat(settings, messages, signal ?? new AbortController().signal)) {
-        rawJson += chunk;
-      }
-
-      const match = rawJson.match(/\{[\s\S]*\}/);
-      if (match) {
-        const parsed = JSON.parse(match[0]);
-        if (typeof parsed.legalScore === 'number') legalScore = Math.min(25, Math.max(8, parsed.legalScore));
-        if (typeof parsed.directScore === 'number') directScore = Math.min(25, Math.max(8, parsed.directScore));
-        if (typeof parsed.strategyScore === 'number') strategyScore = Math.min(25, Math.max(8, parsed.strategyScore));
-        if (Array.isArray(parsed.strengths)) strengths.push(...parsed.strengths);
-        if (Array.isArray(parsed.improvements)) improvements.push(...parsed.improvements);
-        if (parsed.legalCritique) legalCritique = parsed.legalCritique;
-        if (parsed.summary) summary = parsed.summary;
-        if (summary) engineName = settings.backend === 'builtin' ? 'Chrome 內建 Prompt API' : `${settings.backend.toUpperCase()} · ${settings.model}`;
-      }
-    } catch (e) {
-      console.warn('LLM evaluate error, fallback to heuristics', e);
     }
   }
 

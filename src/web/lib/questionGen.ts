@@ -4,14 +4,13 @@
  * Claude (task 'gen') writes questions in the bank's own format from what the
  * bench would actually press on: this counsel's script, the issues already in
  * the bank (to avoid repeats), the focused opponent's arguments, and the
- * Statement of Agreed Facts. The local model is the fallback. New questions
+ * Statement of Agreed Facts. There is no local-model fallback. New questions
  * are saved into the bank on this device (category「AI 新題」, ids AI-P-001 /
  * AI-D-001) and can be edited or published like any other.
  */
 import type { BenchQuestion } from './debateData';
 import { loadDebateData, saveDebateData, type DebateData } from './debateStorage';
-import { callClaude, resolveEngine, localLLMReady } from './debateAI';
-import { loadSettings, streamChat } from '../llm/backends';
+import { callClaude, resolveEngine } from './debateAI';
 import { cleanScript, questionsOf, seatOf, oralOf, SEAT_INFO, type Seat, type Side } from './mootCourt';
 import { focusMatch, prepMeta, matchTitle } from './matchPrep';
 import { sanitizeQuestion } from './debateQuestionSanitizer';
@@ -44,18 +43,7 @@ async function ask(inp: ReturnType<typeof input>, signal?: AbortSignal): Promise
       console.info('Claude question generation unavailable', e);
     }
   }
-  if (localLLMReady() && eng !== 'rules') {
-    let text = '';
-    const msgs = [
-      { role: 'system' as const, content: 'You are a judge of the ICRC IHL Moot Court (Prosecutor v. Roger Thorn, ICC). Output JSON only.' },
-      { role: 'user' as const, content: `Write ${inp.n} NEW bench questions for ${inp.side} ${inp.seat}, different from the existing ones. JSON: {"questions":[{"title","category","issue"(中文),"questionEn","questionZh","followUp","followUpZh","structure":[english lines],"sampleEn","sampleZh"}]}\n\nCounsel's script:\n${inp.script.slice(0, 8000)}\n\nExisting questions:\n${inp.existing.slice(0, 4000)}` },
-    ];
-    for await (const c of streamChat(loadSettings(), msgs, signal ?? new AbortController().signal)) text += c;
-    try {
-      return JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)).questions ?? [];
-    } catch {}
-  }
-  throw new Error('出新題需要 AI：請用帳號登入使用 Claude，或在「本地模型」頁設定模型。');
+  throw new Error('出新題需要 AI：請用帳號登入並由管理者開通 Claude。');
 }
 
 /**
