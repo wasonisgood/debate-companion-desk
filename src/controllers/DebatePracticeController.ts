@@ -15,7 +15,7 @@ import { TTSController } from './TTSController';
 import { BridgeController } from './BridgeController';
 
 import type { Side, CounselSeat, BenchQuestion, OralUnit, AuthSession } from '../types';
-import { followUpFor, type FollowUpResult } from '../services/DebateAIService';
+import { followUpFor, ensureDebateAI, type FollowUpResult } from '../services/DebateAIService';
 import { fetchDebateBank } from '../web/lib/debateStorage';
 import { syncFinishedSegments, type SyncSummary } from '../services/RecordingSync';
 
@@ -71,10 +71,12 @@ export class DebatePracticeController {
         this.onAuthGranted(session);
       }
       // Fetch the shared bank once the website session is active (no UI wait).
-      void this.bridgeController.sessionReady.then(() => this.refreshBank()).catch(() => {});
+      void this.bridgeController.sessionReady.then(() => ensureDebateAI(true)).then(() => this.refreshBank()).catch(() => {});
     });
 
     this.setupOrchestration();
+    // Activate Claude judging and record storage for whatever login is already stored.
+    void ensureDebateAI().then(() => this.refreshBank()).catch(() => {});
   }
 
   private setupOrchestration(): void {

@@ -204,7 +204,6 @@
 #desk-debate .palette li[aria-selected="true"] a { background: var(--paper-2); }
 #desk-debate .palette li[aria-selected="true"] a .k { color: var(--shu); }
 #desk-debate .palette-help { margin: 0; padding: 0.6rem 1.1rem; border-top: 1px solid var(--rule); color: var(--ink-3); display: flex; gap: 0.4rem; align-items: center; }
-@view-transition { navigation: auto; }
 #desk-debate ::view-transition-old(root) { animation: .16s var(--ease) both fade-out; }
 #desk-debate ::view-transition-new(root) { animation: .32s var(--ease) both rise-in; }
 #desk-debate ::view-transition-group(mast) { animation: none; }
